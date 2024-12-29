@@ -16,7 +16,8 @@ const LoginForm = () => {
       console.log("login-form result data: " + result.data.message);
       // save the return access-token from request in cookies
       setCookies("access_token", result.data.token);
-      window.localStorage.setItem("userID", result.data.userID); // user user-id that logged inside local-storage
+      // user user-id that logged inside local-storage, the current-user
+      window.localStorage.setItem("userID", result.data.userID); 
       navigate("/");
     } catch (error) {
       console.error(error.response.data.message);  // either emial/passwor dincorrect will be the message.

@@ -9,6 +9,7 @@ const app = express()
 app.use(express.json())
 app.use(cors())
 
+// include the user-api-routes
 app.use("/", userRouter);
 
 // connection string with db-password db-name db-password

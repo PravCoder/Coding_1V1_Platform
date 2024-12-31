@@ -14,6 +14,8 @@ function App() {
           <Route path="/" element={<HomePage></HomePage>} />
           <Route path="/register" element={<RegisterPage></RegisterPage>} />
           <Route path="/login" element={<LoginPage></LoginPage>} />
+          {/* for shone */}
+          <Route path="/match" element={<LoginPage></LoginPage>} /> 
         </Routes>
       </div>
     </Router>

@@ -34,7 +34,7 @@ const MatchSchema = new mongoose.Schema({
     // has match been started
     started: {type:Boolean, default:false },
     // current time of match
-    time_stop_watch: {type: String, required:true},
+    time_stop_watch: {type: String, required:false},
 })
 
 const MatchModel = mongoose.model("Match", MatchSchema);

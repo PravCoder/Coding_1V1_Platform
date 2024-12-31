@@ -5,15 +5,18 @@ require ("dotenv").config();
 // import view routes, as blankRouter, each api-view has its own router that handles endpoints, just seprating these endpoints with diff view files
 const userRouter = require("./views/user_view.js");
 const problemRouter = require("./views/problem_view.js");
+const matchRouter = require("./views/match_view.js");
 
 
 const app = express()
 app.use(express.json())
 app.use(cors())
 
-// include the user-api-routes with base-path of /
+// include the backend user-api-routes with base-path of /
 app.use("/", userRouter);
 app.use("/problem", problemRouter);
+app.use("/match", matchRouter);
+
 
 
 // connection string with db-password db-name db-password

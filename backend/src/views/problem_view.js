@@ -17,7 +17,7 @@ const router = express.Router();
 /* 
 This route is run when create problem form is submitted
 To create problem-obj we need to create test-case-objs
-Postman: http://localhost:3001/problem/create-problem
+Postman: http://localhost:3001/problem/create-problem:
 {
   "title": "Two Sum",
   "description": "Given an array of integers, return indices of the two numbers such that they add up to a specific target. You may assume that each input would have exactly one solution, and you may not use the same element twice.",
@@ -53,7 +53,7 @@ This is how input & output will look.
 const input = [[2,7,11,15], 9];
 const output = [0, 1];
 
-Postman: http://localhost:3001/problem/add-testcase/6773909915598473e6475ed5
+Postman: http://localhost:3001/problem/add-testcase/6773909915598473e6475ed5:
 {
   "input": "[[2,7,11,15], 9]",
   "output": "[0, 1]",

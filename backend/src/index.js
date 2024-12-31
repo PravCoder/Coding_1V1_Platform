@@ -2,15 +2,19 @@ const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
 require ("dotenv").config();
-// import view routes
+// import view routes, as blankRouter, each api-view has its own router that handles endpoints, just seprating these endpoints with diff view files
 const userRouter = require("./views/user_view.js");
+const problemRouter = require("./views/problem_view.js");
+
 
 const app = express()
 app.use(express.json())
 app.use(cors())
 
-// include the user-api-routes
+// include the user-api-routes with base-path of /
 app.use("/", userRouter);
+app.use("/problem", problemRouter);
+
 
 // connection string with db-password db-name db-password
 mongoose.connect(process.env.MONGO_URI)

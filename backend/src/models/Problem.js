@@ -3,8 +3,9 @@ const mongoose = require("mongoose");
 const ProblemSchema = new mongoose.Schema({
     title: {type:String, required:true},
     description: {type:String, required:true},
+    examples: {type:String, required:false},
 
-    // "Easy","Medium","Hard"
+    // "easy","medium","hard"
     difficulty: {type:String, required:true},
 
     // store list of testcase-objs

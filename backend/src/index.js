@@ -1,7 +1,6 @@
 const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
-require ("dotenv").config();
 // import view routes, as blankRouter, each api-view has its own router that handles endpoints, just seprating these endpoints with diff view files
 const userRouter = require("./views/user_view.js");
 const problemRouter = require("./views/problem_view.js");
@@ -20,7 +19,7 @@ app.use("/match", matchRouter);
 
 
 // connection string with db-password db-name db-password
-mongoose.connect(process.env.MONGO_URI)
+mongoose.connect("mongodb+srv://pravachanpatra:5ct6fwHnaGaUJsDA@coding1v1platformcluste.kvwqv.mongodb.net/coding1v1platform?retryWrites=true&w=majority&appName=coding1V1platformcluster0")
 .then(() => console.log("Connected to MongoDB"))
 .catch(err => console.log("Error connecting to MongoDB:", err));
 

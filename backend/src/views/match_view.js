@@ -17,7 +17,7 @@ const router = express.Router();
 
 /*
 This endpoint is requested when we have two players ready selected for a match 
-Creates match-obj
+Creates match-obj given players & selected problem. Maybe create hook to select random problem. 
 Postman: http://localhost:3001/match/create-match:
 {
   "first_player_id": "677073d50e110ae33b9fda6f",

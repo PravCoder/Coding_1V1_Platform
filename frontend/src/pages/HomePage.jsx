@@ -18,13 +18,12 @@ const HomePage = () => {
     socket.emit("find_match", { player_id: userID });
   };
 
-
+  
   useEffect(() => {
     // From client: listen to match-found-event & recive the broadcasted data sent with emit from server
     socket.on("match_found", (data) => {
-      alert("Match found: ", data.opponent + ", "+ data.match_str);
+      alert("Match found:  player1: ", data.opponent1 + ", player2: "+ data.opponent2 + ", " + "match_str: "+data.match_str);
       console.log("Match found:", data);
-      //  {TBD}: post request to create match given this data -> redirect to the match 
     });
 
   }, [socket])

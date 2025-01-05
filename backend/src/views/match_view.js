@@ -48,5 +48,9 @@ router.post("/create-match", async (req, res) => {
 
 });
 
+/* 
+Endpoint for selecting a player for match that is online & same level as the person.id in url, also pass other match-making info in url
+*/
+
 
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
+const axios = require("axios");
 // socket.io stuff
 const http = require("http");
 const { Server } = require("socket.io");  // getting class-server from socket.io
@@ -8,6 +9,10 @@ const { Server } = require("socket.io");  // getting class-server from socket.io
 const userRouter = require("./views/user_view.js");
 const problemRouter = require("./views/problem_view.js");
 const matchRouter = require("./views/match_view.js");
+// models
+const ProblemModel = require("./models/Problem.js");
+const TestcaseModel = require("./models/Testcase.js");
+const MatchModel = require("./models/Match.js");
 
 // create app-obj
 const app = express()
@@ -37,6 +42,72 @@ const io = new Server(server, {
         methods: ["GET", "POST"],
     }
 })
+
+
+// stores player.ids who have pressed play & are waiting to be matched, each element is {socket.id, player.id}
+// holds its contents evne after refreshing the page, global variable.
+// when user refreshes page socket.id is renewed
+// when server is restarted player-queue is renewed, to prevent this store it in localstorage like userId.
+// FIFO: pops first element in array the first person who clicked play, adds a player to end of queue
+const player_queue = []
+
+// listening to connection-event which is triggered when a user establishes connection with server, when they open app
+// socket-obj represents specific client that is connected. Everytime you open new tab it prints new socket.id.
+io.on("connection", (socket) => {
+    console.log(`user connected socket: ${socket.id}`);
+
+    // find-match-event listenings for users wanting to play, and connects 2 users wanting to player, is emitted when play button is clicked
+    socket.on("find_match", async (data) => {
+        console.log("find match for: " + data.player_id);
+        // there are not enough players to create match add cur-player to queue
+        if (player_queue.length == 0) {  
+            player_queue.push({ socket_id: socket.id, player_id: data.player_id });
+        // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player
+        } else if (player_queue.length >= 1) {
+            // organize player data
+            const player1 = {socket_id: socket.id, player_id: data.player_id };  // current-player
+            const player2 = player_queue.shift();                                       // player we popped fomr queue
+            
+            // unqiue string used to connect sockets to a room using this string
+            const match_str = `match_${player1.player_id}_${player2.player_id}`;
+            // adds current socket of cur-player to a room of match-str, a room is a grouping of sockets
+            socket.join(match_str);
+            
+            // to() gets a socket given its id, use socket-id of player2 to get that player2-socket and add player2-socket to the room of match-str
+            io.to(player2.socket_id).socketsJoin(match_str);
+
+            // select random problem
+            const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
+            const random_problem = problem_docs[0];
+            console.log("random_problem: " + random_problem._id);
+
+            // send post-request to create match onece we have selected/connected 2 players & problem
+            // pass match-str with it
+            await axios.post("http://localhost:3001/match/create-match", {
+                first_player_id: player1.player_id,
+                second_player_id: player2.player_id,
+                problem_id:random_problem,
+            })
+                .then(response => {
+                    console.log("match created successfuly:", response.data);
+                })
+                .catch(error => {
+                    console.error("unable to create match", error.message);
+                });
+
+
+            // notifies players, by getting the socket using players socket.id and emits to event match-found with data of the other player
+            io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
+            io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
+        
+        
+        }
+        console.log("updated queue: " , player_queue.length);
+    })
+
+
+});
+
 
 // frontend runs on: 3000
 // backend runs on: 3001

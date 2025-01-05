@@ -97,8 +97,15 @@ io.on("connection", (socket) => {
 
 
             // notifies players, by getting the socket using players socket.id and emits to event match-found with data of the other player
-            io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
-            io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
+            // io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
+            // io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
+            
+            // get all sockets in match-str room and emit match-found event along with some informational data. 
+            io.to(match_str).emit("match_found", { 
+                opponent1: player1.player_id, 
+                opponent2: player2.player_id, 
+                match_str: match_str 
+            });
         
         
         }

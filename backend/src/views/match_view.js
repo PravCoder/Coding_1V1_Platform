@@ -29,7 +29,7 @@ Postman: http://localhost:3001/match/create-match:
 */
 router.post("/create-match", async (req, res) => {
     try {
-        const {first_player_id, second_player_id, problem_id} = req.body;
+        const {first_player_id, second_player_id, problem_id, match_str} = req.body; // use match-str to send emits?
 
         const new_match = new MatchModel({
             first_player:first_player_id,

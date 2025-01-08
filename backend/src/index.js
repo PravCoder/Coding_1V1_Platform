@@ -65,10 +65,10 @@ io.on("connection", (socket) => {
         // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player
         } else if (player_queue.length >= 1) {
             // organize player data
-            const player1 = {socket_id: socket.id, player_id: data.player_id };  // current-player
-            const player2 = player_queue.shift();                                       // player we popped fomr queue
+            const player1 = {socket_id: socket.id, player_id: data.player_id };  // player1 is the person that sent the emit find-match
+            const player2 = player_queue.shift();                                       // player2 is the player we popped from queue, who previously psent emit find-match
             
-            // unqiue string used to connect sockets to a room using this string
+            // unqiue string used to connect sockets to a room using this string, comprised of player-string
             const match_str = `match_${player1.player_id}_${player2.player_id}`;
             // adds current socket of cur-player to a room of match-str, a room is a grouping of sockets
             socket.join(match_str);
@@ -87,6 +87,7 @@ io.on("connection", (socket) => {
                 first_player_id: player1.player_id,
                 second_player_id: player2.player_id,
                 problem_id:random_problem,
+                match_str:match_str
             })
                 .then(response => {
                     console.log("match created successfuly:", response.data);

@@ -21,12 +21,6 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       result.stderr ? setIsError(true) : setIsError(false);
     } catch (error) {
       console.log(error);
-      // toast({
-      //   title: "An error occurred.",
-      //   description: error.message || "Unable to run code",
-      //   status: "error",
-      //   duration: 6000,
-      // });
     } finally {
       setIsLoading(false);
     }
@@ -38,6 +32,9 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       const sourceCode = editorRef.current.getValue();
       console.log("match-id: " + match_id);
       const result = await axios.post("http://localhost:3001/match/submission", {source_code:sourceCode, match_id:match_id});
+      setOutput(result.data.display_output.split("\n"));
+      console.log("submission results: " + result.data + " out: " + output);
+
     } catch (error) {
       console.error(error.response.data.message);  
     }
@@ -75,6 +72,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
           : 'Click "Run Code" to see the output here'}
       </Box>
     </Box>
+    
   );
 };
 

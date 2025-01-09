@@ -60,35 +60,63 @@ router.post("/submission", async (req, res) => {
 
     const {source_code, match_id} = req.body;
 
- 
+    try {
+        // get match obj
+        console.log("match-id: " + match_id);
+        const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
 
-    // get match obj
-    console.log("match-id: " + match_id);
-    const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
+        // some variables for the result of the submission
+        let num_testcases_passed = 0;
+        let total_testcases = match.problem.test_cases.length; 
+        let first_failed_tc = null;
+        let first_failed_tc_user_output = null;
+        let submission_result = "passed";
+        // iterate problem.testcases
+        // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output
+        for (const cur_testcase of match.problem.test_cases) {
 
-    // iterate problem.testcases
-    // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output
-    for (const cur_testcase of match.problem.test_cases) {
-
-        const formtted_input = format_input(cur_testcase.input);
-        const { run: result } = await executeCode("python", source_code, formtted_input); // await
-        let user_output = result.output;
-        user_output = user_output.replace(/\n/g, "");
-        console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
-
-        if (user_output === cur_testcase.output) { 
-            console.log("testcase #" + cur_testcase._id + " passed");
+            const formatted_input = format_input(cur_testcase.input);  
+            const { run: result } = await executeCode("python", source_code, formatted_input); // compiler api request, pass in input of current testcases
+            let user_output = result.output;
+            user_output = user_output.replace(/\n/g, "");
+            console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
+            
+            // check current testcase
+            if (user_output === cur_testcase.output) { 
+                num_testcases_passed++;
+                console.log("testcase #" + cur_testcase._id + " passed");
+            } else {
+                first_failed_tc = cur_testcase;
+                first_failed_tc_user_output = user_output;
+                submission_result = "failed";
+                console.log("testcase #" + cur_testcase._id + " failed");
+            }
+        
+        };
+        let display_output = "";
+        if (submission_result === "passed") {
+            display_output = "PASSED! Testcases: " + num_testcases_passed +"/" +  total_testcases;
         } else {
-            console.log("testcase #" + cur_testcase._id + " failed");
+            display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases + "\n" + "Input: " + first_failed_tc.input + "\n" + "Output: " + first_failed_tc.output + "\n"+ "Your output: " + first_failed_tc_user_output;
         }
-    
-    };
+        res.status(201).json({
+            message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
+            first_failed_tc:first_failed_tc,
+            first_failed_tc_user_output:first_failed_tc_user_output,
+            display_output:display_output
+        });
 
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ message: "unable to process submission", error: error.message });
+    }
 
 
 });
 
-// helper functions
+
+
+// HELPER FUNCTIONS
 function format_input(input) {
     const parsedInput = JSON.parse(input);
     return parsedInput

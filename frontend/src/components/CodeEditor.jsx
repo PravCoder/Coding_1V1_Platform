@@ -5,8 +5,13 @@ import { CODE_SNIPPETS, theme } from "../constants/api";
 import OutputWindow from "../components/OutputWindow";
 
 
+/* 
+Custom input has to be like:
+1 2 3
+9
+*/
 
-const CodeEditor = () => {
+const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
   const [value, setValue] = useState("");
   const [language, setLanguage] = useState("python");
@@ -42,7 +47,7 @@ const CodeEditor = () => {
             onChange={(value) => setValue(value)}
           />
           <Box mt={4}>
-            <label>Custom Input</label>
+            <label> <b>Custom Input </b></label>
             <textarea
               style={{
                 width: "100%",
@@ -58,7 +63,7 @@ const CodeEditor = () => {
             />
           </Box>
         </Box>
-        <OutputWindow editorRef={editorRef} language={language} input={input} />
+        <OutputWindow match_id={match_id} editorRef={editorRef} language={language} input={input} />
       </HStack>
     </Box>
   );

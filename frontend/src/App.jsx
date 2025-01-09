@@ -19,7 +19,7 @@ function App() {
 
 
           {/* for shone -> 6779d39282fe16a6817030f9 */}
-          <Route path="/match/:id" element={<MatchPage></MatchPage>} /> 
+          <Route path="/match/:match_id" element={<MatchPage></MatchPage>} /> 
           
 
         </Routes>

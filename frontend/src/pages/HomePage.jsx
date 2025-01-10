@@ -11,6 +11,7 @@ const socket = io.connect("http://localhost:3001");
 const HomePage = () => {
   const [user, setUser] = useState(null);
   const userID = getCurrentUser();
+  const navigate = useNavigate();
 
   // called when play-button is clicked
   const handleFindMatch = () => {
@@ -22,8 +23,9 @@ const HomePage = () => {
   useEffect(() => {
     // From client: listen to match-found-event & recive the broadcasted data sent with emit from server
     socket.on("match_found", (data) => {
-      alert("Match found:  player1: ", data.opponent1 + ", player2: "+ data.opponent2 + ", " + "match_str: "+data.match_str);
+      //alert("Match found:  player1: ", data.opponent1 + ", player2: "+ data.opponent2 + ", " + "match_str: "+data.match_str);
       console.log("Match found:", data);
+      navigate(`match/${data.new_match_id}`);
     });
 
   }, [socket])

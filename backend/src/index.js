@@ -81,7 +81,7 @@ io.on("connection", (socket) => {
             const random_problem = problem_docs[0];
             console.log("random_problem: " + random_problem._id);
 
-            // send post-request to create match onece we have selected/connected 2 players & problem
+            // send post-request to create match once we have selected/connected 2 players & problem
             // pass match-str with it
             await axios.post("http://localhost:3001/match/create-match", {
                 first_player_id: player1.player_id,
@@ -91,23 +91,22 @@ io.on("connection", (socket) => {
             })
                 .then(response => {
                     console.log("match created successfuly:", response.data);
+                    // notifies players, by getting the socket using players socket.id and emits to event match-found with data of the other player
+                    // io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
+                    // io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
+                    
+                    // get all sockets in match-str room and emit match-found event along with some informational data. 
+                    io.to(match_str).emit("match_found", { 
+                        opponent1: player1.player_id, 
+                        opponent2: player2.player_id, 
+                        match_str: match_str,
+                        new_match_id: response.data.match._id  // for url redirect to match play page
+                    });
                 })
                 .catch(error => {
                     console.error("unable to create match", error.message);
                 });
 
-
-            // notifies players, by getting the socket using players socket.id and emits to event match-found with data of the other player
-            // io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
-            // io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
-            
-            // get all sockets in match-str room and emit match-found event along with some informational data. 
-            io.to(match_str).emit("match_found", { 
-                opponent1: player1.player_id, 
-                opponent2: player2.player_id, 
-                match_str: match_str 
-            });
-        
         
         }
         console.log("updated queue: " , player_queue.length);

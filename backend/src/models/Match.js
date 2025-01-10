@@ -27,7 +27,7 @@ const MatchSchema = new mongoose.Schema({
     // maxium number of testcases each player has passed on a submission
     first_player_max_testcases_passed: { type:Number, required:false, min:0},
     second_player_max_testcases_passed: { type:Number, required:false, min:0},
-    // number testcases passed on latest submissionm for each player
+    // number testcases passed on latest submission for each player
     first_player_latest_testcases_passed: { type:Number, required:false, min:0},
     second_player_latest_testcases_passed: { type:Number, required:false, min:0},
 

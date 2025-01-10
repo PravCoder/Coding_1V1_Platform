@@ -49,9 +49,13 @@ router.post("/create-match", async (req, res) => {
 
 });
 
+
+
+
+
 /* 
 Input given to compiler API will be "1 2 3\n9\n4 5 6\n7\n8", where each input is seperated by \n.
-
+Only handles array and integer inputs problems. 
 */
 router.post("/submission", async (req, res) => {
     const API = axios.create({
@@ -75,7 +79,7 @@ router.post("/submission", async (req, res) => {
         // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output
         for (const cur_testcase of match.problem.test_cases) {
 
-            const formatted_input = format_input(cur_testcase.input);  
+            const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
             const { run: result } = await executeCode("python", source_code, formatted_input); // compiler api request, pass in input of current testcases
             let user_output = result.output;
             user_output = user_output.replace(/\n/g, "");
@@ -116,12 +120,12 @@ router.post("/submission", async (req, res) => {
 
 
 
-// HELPER FUNCTIONS
+// ***HELPER FUNCTIONS***
 function format_input(input) {
     const parsedInput = JSON.parse(input);
     return parsedInput
       .map((item) => {
-        if (Array.isArray(item)) {
+        if (Array.isArray(item)) { // if input is an array turn into 1 2 3 4
           return item.join(" ");
         }
         return item.toString();

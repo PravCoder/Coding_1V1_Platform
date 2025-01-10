@@ -55,9 +55,15 @@ const output = [0, 1];
 
 Postman: http://localhost:3001/problem/add-testcase/6773909915598473e6475ed5:
 {
-  "input": "[[2,7,11,15], 9]",
-  "output": "[0, 1]",
+  "input": "[[2,7,11,15], 9]",  # spaces between outer elements, no spaces between inner list inputs
+  "output": "[0, 1]",  # spaces here
 }
+
+"[[3,2,4], 6]"
+"[1, 2]"
+
+"[[3,3], 6]"
+"[0, 1]"
 
 */
 router.post("/add-testcase/:problemId", async (req, res) => {

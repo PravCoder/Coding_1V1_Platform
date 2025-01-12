@@ -49,13 +49,36 @@ router.post("/create-match", async (req, res) => {
 
 });
 
+/* 
+For displaying problem info have to fetch match, to access match.problem. 
+Every time page is refreshed this is bottle neck. So cache match. 
+*/
+router.get("/get-match-problem/:match_id", async (req, res) => {
+    const { match_id } = req.params;
+
+    try {
+        const match = await MatchModel.findById(match_id).populate('problem'); // fill in problen attribute not just its id
+
+        if (!match) {
+        return res.status(404).json({ message: "Match not found" });
+        }
+
+        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "An error occurred", error: error.message });
+    }
+
+});
+
 
 
 
 
 /* 
 Input given to compiler API will be "1 2 3\n9\n4 5 6\n7\n8", where each input is seperated by \n.
-Only handles array and integer inputs problems. 
+Only handles array and integer inputs problems. Pass in match-id in body. 
 */
 router.post("/submission", async (req, res) => {
     const API = axios.create({

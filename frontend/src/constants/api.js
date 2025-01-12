@@ -1,4 +1,4 @@
-// Code editor API, and constants
+// Code editor API, and constants, this is for custom input run code. 
 
 import axios from "axios";
 import * as chakra from '@chakra-ui/react'; // Import the whole module

@@ -5,6 +5,8 @@ import { useCookies } from "react-cookie";
 import  getCurrentUser  from "../hooks/getCurrentUser";
 import OutputWindow from "../components/OutputWindow";
 import CodeEditor from "../components/CodeEditor";
+import OpponentUpdates from "../components/OpponentUpdates";
+
 
 const MatchPage = () => {
   
@@ -12,8 +14,9 @@ const MatchPage = () => {
 
   return (
     <div>
+        <OpponentUpdates match_id={match_id}/>
         <CodeEditor match_id={match_id}/>
-
+        
     </div>
   );
   }

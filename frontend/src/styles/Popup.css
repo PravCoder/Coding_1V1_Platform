@@ -1,0 +1,24 @@
+.popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background-color: #007bff;
+    color: white;
+    padding: 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    transform: translateY(100px);
+    transition: all 0.5s ease;
+  }
+  
+  .popup.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  
+  .popup.hide {
+    opacity: 0;
+    transform: translateY(100px);
+  }
+  

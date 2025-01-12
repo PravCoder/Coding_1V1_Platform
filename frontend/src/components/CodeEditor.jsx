@@ -1,8 +1,9 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Box, HStack } from "@chakra-ui/react";
 import { Editor } from "@monaco-editor/react";
 import { CODE_SNIPPETS, theme } from "../constants/api";
 import OutputWindow from "../components/OutputWindow";
+import axios from "axios";
 
 
 /* 
@@ -16,20 +17,37 @@ const CodeEditor = ({ match_id }) => {
   const [value, setValue] = useState("");
   const [language, setLanguage] = useState("python");
   const [input, setInput] = useState(""); // State for custom input
+  const [problem, setProblem] = useState({});
 
   const onMount = (editor) => {
     editorRef.current = editor;
     editor.focus();
   };
 
-  const onSelect = (language) => {
-    setLanguage(language);
-    setValue(CODE_SNIPPETS[language]);
+  const fetchProblem = async (event) => {
+    try {
+      const response = await axios.get(`http://localhost:3001/match/get-match-problem/${match_id}`);
+      setProblem(response.data.problem);
+      console.log(response.data.problem);
+    } catch (error) {
+      console.error(error.response.data.message);  
+    }
   };
 
+  useEffect(() => {
+    fetchProblem();
+  }, [match_id]);
+
   return (
+    
     <Box>
+      <h4>{problem.title} - {problem.difficulty}</h4>
+      <p>{problem.description}</p>
+      <label><b>Examples:</b></label>
+      <p>{problem.examples}</p>
+
       <HStack spacing={4}>
+        
         <Box w="50%">
           {/* <LanguageSelector language={language} onSelect={onSelect} /> */}
           <Editor

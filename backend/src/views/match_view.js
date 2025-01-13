@@ -5,16 +5,20 @@ const cors = require("cors")
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const axios = require("axios");
+const cookieParser = require('cookie-parser');
 // import models
 const ProblemModel = require("../models/Problem.js");
 const TestcaseModel = require("../models/Testcase.js");
 const MatchModel = require("../models/Match.js");
+
 // create application-express-obj, obj that handles requests
 const app = express()
 app.use(express.json())
 app.use(cors())
+app.use(cookieParser());
 
 const router = express.Router();
+const io = require('../index');  // sockets
 
 /*
 This endpoint is requested when we have two players ready selected for a match 
@@ -36,7 +40,8 @@ router.post("/create-match", async (req, res) => {
             first_player:first_player_id,
             second_player: second_player_id,
             problem:problem_id,
-            started:true
+            started:true,
+            match_str:match_str
         })
 
         await new_match.save();
@@ -126,6 +131,21 @@ router.post("/submission", async (req, res) => {
         } else {
             display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases + "\n" + "Input: " + first_failed_tc.input + "\n" + "Output: " + first_failed_tc.output + "\n"+ "Your output: " + first_failed_tc_user_output;
         }
+
+        // first confirm which player submission it is
+        // userID = "677073d50e110ae33b9fda6f";
+        // if (userID == match.first_player) {
+        //     console.log("First player")
+        //     match.first_player_submissions++;
+        //     io.to(match.match_str).emit("opponent_update",{match:match});
+        // }
+        // if (userID == match.second_player) {
+        //     match.second_player_submissions++;
+        //     io.to(match.match_str).emit("opponent_update",{match:match});
+        // }
+
+        match.save();
+        // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({
             message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
             first_failed_tc:first_failed_tc,

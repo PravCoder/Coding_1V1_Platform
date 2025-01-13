@@ -1,24 +1,28 @@
-.popup {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    background-color: #007bff;
-    color: white;
-    padding: 16px;
-    border-radius: 8px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    opacity: 0;
-    transform: translateY(100px);
-    transition: all 0.5s ease;
-  }
-  
-  .popup.show {
+.popup-container {
+    display: inline-block;
+    position: relative;
+    font-size: 1.2rem;
+    font-weight: bold;
+    padding-right: 50px; /* Add right padding */
+    padding-left: 50px; /* Add right padding */
+    background-color: transparent; /* Default background */
+    transition: transform 0.3s ease, opacity 0.3s ease, background-color 0.3s ease;
+    transform: scale(1); /* Default size */
     opacity: 1;
-    transform: translateY(0);
   }
   
-  .popup.hide {
-    opacity: 0;
-    transform: translateY(100px);
+  .popup-container.show {
+    transform: scale(1.5); /* Enlarged size for popup effect */
+    opacity: 0.9; /* Slight transparency */
+    background-color: #cf820d; /* Light blue background when active */
+    border-radius: 8px; /* Optional: Rounded corners for better appearance */
+    padding: 10px 20px; /* Extra padding for content inside popup */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Add a subtle shadow for effect */
+  }
+  
+  button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    font-size: 1rem;
   }
   

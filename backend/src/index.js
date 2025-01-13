@@ -43,7 +43,7 @@ const io = new Server(server, {
     }
 })
 
-
+module.exports = io; // for sockets in other files
 // stores player.ids who have pressed play & are waiting to be matched, each element is {socket.id, player.id}
 // holds its contents evne after refreshing the page, global variable.
 // when user refreshes page socket.id is renewed
@@ -75,6 +75,11 @@ io.on("connection", (socket) => {
             
             // to() gets a socket given its id, use socket-id of player2 to get that player2-socket and add player2-socket to the room of match-str
             io.to(player2.socket_id).socketsJoin(match_str);
+
+            // show which sockets are in match-str-room
+            io.in(match.match_str).fetchSockets().then((sockets) => {
+                console.log(`Sockets in room ${match.match_str}:`, sockets.map(s => s.id));
+            });
 
             // select random problem
             const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
@@ -110,8 +115,29 @@ io.on("connection", (socket) => {
         
         }
         console.log("updated queue: " , player_queue.length);
-    })
+    });
 
+    // On server: listening for opponent-update-event from client
+    socket.on("get_opponent_update", async (data) => {
+        console.log("get_opponent_update_server id: " + data.match_id);
+        const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
+        if (!match) {
+            console.log("Match not found for ID:", data.match_id);
+            return;
+        }
+        // show which sockets are in this matchs-room, after refresh they are removed from room & get new socket.id
+        io.in(match.match_str).fetchSockets().then((sockets) => {
+            console.log(`Sockets in room ${match.match_str}:`, sockets.map(s => s.id));
+        });
+        io.to(match.match_str).emit("opponent_update", {match:match});
+    });
+
+    // To rejoin socket to match-str-room. Not working
+    socket.on("rejoin_match", async (data) => {
+        const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
+        socket.join(match.match_str);
+        console.log(`Socket ${socket.id} rejoined room ${match_str}`);
+      });
 
 });
 

@@ -26,6 +26,7 @@ const CodeEditor = ({ match_id }) => {
 
   const fetchProblem = async (event) => {
     try {
+      // this is slowing down application have to fetch problem, every time so store match in cache. 
       const response = await axios.get(`http://localhost:3001/match/get-match-problem/${match_id}`);
       setProblem(response.data.problem);
       console.log(response.data.problem);

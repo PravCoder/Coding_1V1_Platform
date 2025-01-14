@@ -85,6 +85,9 @@ io.on("connection", (socket) => {
                 console.log(`Sockets in room 4 ${match_str}:`, sockets.map(s => s.id));
             });
 
+            console.log("player1: " + player1.player_id );
+            console.log("player2: " + player2.player_id + "\n");
+
             // select random problem
             const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
             const random_problem = problem_docs[0];
@@ -124,13 +127,30 @@ io.on("connection", (socket) => {
     // On server: listening for opponent-update-event from client
     socket.on("get_opponent_update", async (data) => {
         console.log("get_opponent_update_server id: " + data.match_id);
+
+        userId = data.userId;
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
         if (!match) {
             console.log("Match not found for ID:", data.match_id);
             return;
         }
-        match.first_player_submissions++; // incrementing because they jsut submitted code
-        match.save();
+        
+        // finding who submission it is, because they emitted get_opponent_update_event
+        let oppSubs = null;
+        console.log("userid: " + userId);
+        console.log("first: " + match.first_player._id);
+        console.log("second: " + match.second_player._id);
+        if (userId === match.first_player._id.toString()) {
+            match.first_player_submissions++;
+            console.log("increment first index");
+            oppSubs = match.first_player_submissions;
+        }
+        if (userId === match.second_player._id.toString()) {
+            match.second_player_submissions++;
+            console.log("increment second index");
+            oppSubs = match.second_player_submissions;
+        }
+        match.save(); // save updated we made to match-obj attributes
 
         // make sure sockets are in match-str-room, by getting them and adding them. 
         const sockets = await io.in(match.match_str).fetchSockets();
@@ -144,8 +164,8 @@ io.on("connection", (socket) => {
         });
         console.log("Cur socket: " + socket.id);
 
-        // emit back
-        io.to(match.match_str).emit("opponent_update", { match: match, num:4 });
+        // emit back with updated match-obj, except sender use socket.to() else use io.to() we are sneding opponents updates so dont emit to cur-person. 
+        socket.to(match.match_str).emit("opponent_update", { match: match, oppSubs:oppSubs });
  
 
     });

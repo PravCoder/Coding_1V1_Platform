@@ -3,6 +3,7 @@ import { Box, Button, Text } from "@chakra-ui/react";
 import { executeCode } from "../constants/api";
 import axios from "axios";
 import io from "socket.io-client";
+import  getCurrentUser  from "../hooks/getCurrentUser";
 // connect to server from client-side establishes socketio connection with backend running on 3001
 const socket = io.connect("http://localhost:3001"); 
 
@@ -13,16 +14,15 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [opponentSubmissions, setOpponentSubmissions] = useState(0);
-  const socketRef = useRef(null); // Use ref to maintain socket instance
+  const socketRef = useRef(null); // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
 
   const runCode = async () => {
     const sourceCode = editorRef.current.getValue();
     if (!sourceCode) return;
     try {
       setIsLoading(true);
-      // set output
-      const { run: result } = await executeCode(language, sourceCode, input); // Pass custom input
-      setOutput(result.output.split("\n")); // split by new line
+      const { run: result } = await executeCode(language, sourceCode, input); // pass custom input
+      setOutput(result.output.split("\n")); //set output, split by new line
       result.stderr ? setIsError(true) : setIsError(false);
     } catch (error) {
       console.log(error);
@@ -42,7 +42,9 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
 
       if (socketRef.current) {
         console.log("Emitting get_opponent_update with socket:", socketRef.current.id);
-        socketRef.current.emit("get_opponent_update", { match_id }, (response) => {  // first emit to request for update
+
+        const userId = getCurrentUser();
+        socketRef.current.emit("get_opponent_update", { match_id, userId}, (response) => {  // first emit to request for update upon submission
           console.log("get_opponent_update callback:", response);
         });
       }
@@ -64,12 +66,24 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
     const handleOpponentUpdate = (data) => {
       console.log("Received opponent_update. Socket ID:", socketRef.current.id);
       console.log("Update data:", data);
-      setOpponentSubmissions(data.match.first_player_submissions);
+      const userId = getCurrentUser();
+      console.log("user: " + userId + " first: " + data.match.first_player._id + " second: " +data.match.second_player._id);
+      // set the other players submissions
+      if (userId === data.match.first_player) {
+        setOpponentSubmissions(data.match.second_player_submissions);
+        console.log("set first in client");
+      }
+      if (userId === data.match.second_player) {
+        setOpponentSubmissions(data.match.first_player_submissions);
+        console.log("set second in client");
+      }
+
+      // setOpponentSubmissions(data.oppSubs);
     };
 
     socketRef.current.on("opponent_update", handleOpponentUpdate);
 
-    // Cleanup function
+    // cleanup function
     return () => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
     };

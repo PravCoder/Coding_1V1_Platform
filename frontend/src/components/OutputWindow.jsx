@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Box, Button, Text } from "@chakra-ui/react";
 import { executeCode } from "../constants/api";
 import axios from "axios";
@@ -13,6 +13,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   const [opponentSubmissions, setOpponentSubmissions] = useState(0);
+  const socketRef = useRef(null); // Use ref to maintain socket instance
 
   const runCode = async () => {
     const sourceCode = editorRef.current.getValue();
@@ -39,10 +40,12 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));
 
-      socket.emit("get_opponent_update", { match_id: match_id }, (data) => {
-        console.log("get_opponent_update_client:", data);
-        // navigate(`match/${data.new_match_id}`);
-      });
+      if (socketRef.current) {
+        console.log("Emitting get_opponent_update with socket:", socketRef.current.id);
+        socketRef.current.emit("get_opponent_update", { match_id }, (response) => {  // first emit to request for update
+          console.log("get_opponent_update callback:", response);
+        });
+      }
 
 
     } catch (error) {
@@ -51,13 +54,27 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   };
 
   useEffect(() => {
-    socket.on("opponent_update", (data) => {
-      //alert("Match found:  player1: ", data.opponent1 + ", player2: "+ data.opponent2 + ", " + "match_str: "+data.match_str);
-      console.log("opponent_update_client:", data);
+    if (!socketRef.current) {
+      socketRef.current = io("http://localhost:3001");
+      
+      console.log("Creating new socket connection client:", socketRef.current.id);
+    }
+    socketRef.current.emit("rejoin_match", { match_id }); // if their socket cahnges rejoin-match
+
+    const handleOpponentUpdate = (data) => {
+      console.log("Received opponent_update. Socket ID:", socketRef.current.id);
+      console.log("Update data:", data);
       setOpponentSubmissions(data.match.first_player_submissions);
-    });
+    };
+
+    socketRef.current.on("opponent_update", handleOpponentUpdate);
+
+    // Cleanup function
+    return () => {
+      socketRef.current.off("opponent_update", handleOpponentUpdate);
+    };
   
-  }, [socket])
+  }, [match_id])
 
   return (
     <Box w="50%">

@@ -15,9 +15,9 @@ const MatchPage = () => {
   
   const { match_id } = useParams();
 
-  useEffect(() => {
-    socket.emit("rejoin_room", { match_id });
-  }, [socket, match_id]);
+  // useEffect(() => {
+  //   socket.emit("rejoin_room", { match_id });
+  // }, [socket, match_id]);
 
   return (
     <div>

@@ -43,13 +43,17 @@ const io = new Server(server, {
     }
 })
 
-module.exports = io; // for sockets in other files
+// module.exports = io; // for sockets in other files
+
 // stores player.ids who have pressed play & are waiting to be matched, each element is {socket.id, player.id}
 // holds its contents evne after refreshing the page, global variable.
 // when user refreshes page socket.id is renewed
 // when server is restarted player-queue is renewed, to prevent this store it in localstorage like userId.
 // FIFO: pops first element in array the first person who clicked play, adds a player to end of queue
 const player_queue = []
+
+// each match_id -> set of socket.ids, purpose of this? to keep track of sockets
+const active_matches = new Map();
 
 // listening to connection-event which is triggered when a user establishes connection with server, when they open app
 // socket-obj represents specific client that is connected. Everytime you open new tab it prints new socket.id.
@@ -77,8 +81,8 @@ io.on("connection", (socket) => {
             io.to(player2.socket_id).socketsJoin(match_str);
 
             // show which sockets are in match-str-room
-            io.in(match.match_str).fetchSockets().then((sockets) => {
-                console.log(`Sockets in room ${match.match_str}:`, sockets.map(s => s.id));
+            io.in(match_str).fetchSockets().then((sockets) => {
+                console.log(`Sockets in room 4 ${match_str}:`, sockets.map(s => s.id));
             });
 
             // select random problem
@@ -125,19 +129,46 @@ io.on("connection", (socket) => {
             console.log("Match not found for ID:", data.match_id);
             return;
         }
+        match.first_player_submissions++; // incrementing because they jsut submitted code
+        match.save();
+
+        // make sure sockets are in match-str-room, by getting them and adding them. 
+        const sockets = await io.in(match.match_str).fetchSockets();
+        if (!sockets.some(s => s.id === socket.id)) {
+            socket.join(match.match_str);
+        }
+
         // show which sockets are in this matchs-room, after refresh they are removed from room & get new socket.id
         io.in(match.match_str).fetchSockets().then((sockets) => {
-            console.log(`Sockets in room ${match.match_str}:`, sockets.map(s => s.id));
+            console.log(`Sockets in room get_opponent_update ${match.match_str}:`, sockets.map(s => s.id));
         });
-        io.to(match.match_str).emit("opponent_update", {match:match});
+        console.log("Cur socket: " + socket.id);
+
+        // emit back
+        io.to(match.match_str).emit("opponent_update", { match: match, num:4 });
+ 
+
     });
+
+
+
 
     // To rejoin socket to match-str-room. Not working
     socket.on("rejoin_match", async (data) => {
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
-        socket.join(match.match_str);
-        console.log(`Socket ${socket.id} rejoined room ${match_str}`);
-      });
+        
+        socket.join(match.match_str); // add cur-socket to match-str-room
+
+        // if active-matches doesnt have key with our match-id, add match-id with empty value
+        if (!active_matches.has(match.match_id)) {
+            active_matches.set(match.match_id, new Set());
+        }
+
+        console.log(`Socket ${socket.id} rejoined room ${match.match_str}`);
+
+        const sockets = await io.in(match.match_str).fetchSockets();
+        console.log(`Sockets in room rejoin_match" ${match.match_str}: `, sockets.map(s => s.id));
+    });
 
 });
 
@@ -148,4 +179,6 @@ io.on("connection", (socket) => {
 server.listen(3001, () => {
     console.log("server is running")
 })
+
+// Improved Socket.IO Server Implementation
 

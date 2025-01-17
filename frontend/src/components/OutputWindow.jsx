@@ -13,8 +13,13 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   const [output, setOutput] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
+  // opponent progress variables
   const [opponentSubmissions, setOpponentSubmissions] = useState(0);
-  const socketRef = useRef(null); // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
+  const [oppsCurTestcasesPassed, setOppsCurTestcasesPassed] = useState(0);
+  // cur users variables
+  const [myCurTestcases, setMyCurTestcases] = useState(0);
+  // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
+  const socketRef = useRef(null); 
 
   const runCode = async () => {
     const sourceCode = editorRef.current.getValue();
@@ -39,12 +44,17 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));
-
+      // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
+      setMyCurTestcases(result.data.num_testcases_passed); 
+      
+      const testcases_passed = result.data.num_testcases_passed;
+      console.log("testcases_passed: " + testcases_passed);
       if (socketRef.current) {
         console.log("Emitting get_opponent_update with socket:", socketRef.current.id);
 
         const userId = getCurrentUser();
-        socketRef.current.emit("get_opponent_update", { match_id, userId}, (response) => {  // first emit to request for update upon submission
+        console.log("myCurTestcases before emitting: " + myCurTestcases + " data: " + result.data.num_testcases_passed);
+        socketRef.current.emit("get_opponent_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
           console.log("get_opponent_update callback:", response);
         });
       }
@@ -58,8 +68,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   useEffect(() => {
     if (!socketRef.current) {
       socketRef.current = io("http://localhost:3001");
-      
-      console.log("Creating new socket connection client:", socketRef.current.id);
+      console.log("creating new socket connection client:", socketRef.current.id);
     }
     socketRef.current.emit("rejoin_match", { match_id }); // if their socket cahnges rejoin-match
 
@@ -67,21 +76,23 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       console.log("Received opponent_update. Socket ID:", socketRef.current.id);
       console.log("Update data:", data);
       const userId = getCurrentUser();
-      console.log("user: " + userId + " first: " + data.match.first_player._id + " second: " +data.match.second_player._id);
-      // set the other players submissions
-      if (userId === data.match.first_player) {
+      console.log("user: " + userId + " first_id: " + data.match.first_player._id + " second_id: " +data.match.second_player._id);
+      // set the other players submissions, THIS IS NOT RUNNING??
+      if (userId === data.match.first_player.toString()) {
         setOpponentSubmissions(data.match.second_player_submissions);
+        setOppsCurTestcasesPassed(data.match.second_player_latest_testcases_passed);
         console.log("set first in client");
       }
-      if (userId === data.match.second_player) {
+      if (userId === data.match.second_player.toString()) {
         setOpponentSubmissions(data.match.first_player_submissions);
+        setOppsCurTestcasesPassed(data.match.first_player_latest_testcases_passed);
         console.log("set second in client");
       }
 
       // setOpponentSubmissions(data.oppSubs);
     };
-
-    socketRef.current.on("opponent_update", handleOpponentUpdate);
+    // when we get an emit from server do handleOpponentUpdate, it has updated match-obj
+    socketRef.current.on("opponent_update", handleOpponentUpdate); 
 
     // cleanup function
     return () => {
@@ -93,6 +104,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   return (
     <Box w="50%">
       <h2>Opponent Submissions: {opponentSubmissions}</h2>
+      <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}</h2>
       <Text mb={2} fontSize="lg">
         Output
       </Text>

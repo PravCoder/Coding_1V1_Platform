@@ -129,31 +129,29 @@ io.on("connection", (socket) => {
         console.log("get_opponent_update_server id: " + data.match_id);
 
         userId = data.userId;
+        testcases_passed = data.testcases_passed;
+        console.log("mytestcases we got: " + testcases_passed);
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
-        if (!match) {
-            console.log("Match not found for ID:", data.match_id);
-            return;
-        }
         
+        // Opponent Update Computations
         // finding who submission it is, because they emitted get_opponent_update_event
         let oppSubs = null;
-        console.log("userid: " + userId);
-        console.log("first: " + match.first_player._id);
-        console.log("second: " + match.second_player._id);
         if (userId === match.first_player._id.toString()) {
             match.first_player_submissions++;
-            console.log("increment first index");
+            match.first_player_latest_testcases_passed = testcases_passed;
+            console.log("increment first player submissions: "+ testcases_passed);
             oppSubs = match.first_player_submissions;
         }
         if (userId === match.second_player._id.toString()) {
             match.second_player_submissions++;
-            console.log("increment second index");
+            match.second_player_latest_testcases_passed = testcases_passed;
+            console.log("increment second player submissions: " + testcases_passed);
             oppSubs = match.second_player_submissions;
         }
         match.save(); // save updated we made to match-obj attributes
 
         // make sure sockets are in match-str-room, by getting them and adding them. 
-        const sockets = await io.in(match.match_str).fetchSockets();
+        const sockets = await io.in(match.match_str).fetchSockets();  // get all sockets in match-str-room
         if (!sockets.some(s => s.id === socket.id)) {
             socket.join(match.match_str);
         }
@@ -164,13 +162,11 @@ io.on("connection", (socket) => {
         });
         console.log("Cur socket: " + socket.id);
 
-        // emit back with updated match-obj, except sender use socket.to() else use io.to() we are sneding opponents updates so dont emit to cur-person. 
+        // emit back with updated match-obj, everyone in room except sender use socket.to() else use io.to() we are sending opponents updates so dont emit to cur-person. 
         socket.to(match.match_str).emit("opponent_update", { match: match, oppSubs:oppSubs });
  
 
     });
-
-
 
 
     // To rejoin socket to match-str-room. Not working

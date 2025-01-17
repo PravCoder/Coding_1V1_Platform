@@ -86,6 +86,23 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
 /* 
 Input given to compiler API will be "1 2 3\n9\n4 5 6\n7\n8", where each input is seperated by \n.
 Only handles array and integer inputs problems. Pass in match-id in body. 
+nums = list(map(int, input().split()))
+target = int(input())
+
+def two_sum(nums, target):
+    lookup = {}
+    for i, num in enumerate(nums):
+        diff = target - num
+        if diff in lookup:
+            return [lookup[diff], i]
+        lookup[num] = i
+
+result = two_sum(nums, target)
+print(result)
+
+example
+3 2 4
+6
 */
 router.post("/submission", async (req, res) => {
     const API = axios.create({
@@ -152,7 +169,8 @@ router.post("/submission", async (req, res) => {
             message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
             first_failed_tc:first_failed_tc,
             first_failed_tc_user_output:first_failed_tc_user_output,
-            display_output:display_output
+            display_output:display_output,
+            num_testcases_passed:num_testcases_passed
         });
 
     } catch (error) { 

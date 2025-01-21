@@ -16,8 +16,9 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   // opponent progress variables
   const [opponentSubmissions, setOpponentSubmissions] = useState(0);
   const [oppsCurTestcasesPassed, setOppsCurTestcasesPassed] = useState(0);
+  const [oppsMaxTestcasesPassed, setOppsMaxTestcasesPassed] = useState(0);
   // cur users variables
-  const [myCurTestcases, setMyCurTestcases] = useState(0);
+  
   // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
   const socketRef = useRef(null); 
 
@@ -45,7 +46,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
-      setMyCurTestcases(result.data.num_testcases_passed); 
+      // setMyCurTestcases(result.data.num_testcases_passed); 
       
       const testcases_passed = result.data.num_testcases_passed;
       console.log("testcases_passed: " + testcases_passed);
@@ -53,7 +54,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
         console.log("Emitting get_opponent_update with socket:", socketRef.current.id);
 
         const userId = getCurrentUser();
-        console.log("myCurTestcases before emitting: " + myCurTestcases + " data: " + result.data.num_testcases_passed);
+        console.log("myCurTestcases before emitting: " + " data: " + result.data.num_testcases_passed);
         socketRef.current.emit("get_opponent_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
           console.log("get_opponent_update callback:", response);
         });
@@ -78,15 +79,17 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       const userId = getCurrentUser();
       console.log("user: " + userId + " first_id: " + data.match.first_player._id + " second_id: " +data.match.second_player._id);
       // set the other players submissions, THIS IS NOT RUNNING??
-      if (userId === data.match.first_player.toString()) {
+      if (userId === data.match.first_player.toString()) {   // first-player
         setOpponentSubmissions(data.match.second_player_submissions);
         setOppsCurTestcasesPassed(data.match.second_player_latest_testcases_passed);
-        console.log("set first in client");
+        setOppsMaxTestcasesPassed(data.match.second_player_max_testcases_passed);
+        console.log("set first-player updates in client");
       }
-      if (userId === data.match.second_player.toString()) {
+      if (userId === data.match.second_player.toString()) {   // second-player
         setOpponentSubmissions(data.match.first_player_submissions);
         setOppsCurTestcasesPassed(data.match.first_player_latest_testcases_passed);
-        console.log("set second in client");
+        setOppsMaxTestcasesPassed(data.match.first_player_max_testcases_passed);
+        console.log("set second-player updates in client");
       }
 
       // setOpponentSubmissions(data.oppSubs);
@@ -105,6 +108,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
     <Box w="50%">
       <h2>Opponent Submissions: {opponentSubmissions}</h2>
       <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}</h2>
+      <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}</h2>
       <Text mb={2} fontSize="lg">
         Output
       </Text>

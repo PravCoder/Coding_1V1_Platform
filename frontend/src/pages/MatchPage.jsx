@@ -21,7 +21,7 @@ const MatchPage = () => {
 
   return (
     <div>
-        <OpponentUpdates match_id={match_id}/>
+        {/* <OpponentUpdates match_id={match_id}/> */}
         <CodeEditor match_id={match_id}/>
         
     </div>

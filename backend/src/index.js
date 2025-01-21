@@ -135,18 +135,21 @@ io.on("connection", (socket) => {
         
         // Opponent Update Computations
         // finding who submission it is, because they emitted get_opponent_update_event
-        let oppSubs = null;
-        if (userId === match.first_player._id.toString()) {
+        if (userId === match.first_player._id.toString()) {  // first-player
             match.first_player_submissions++;
             match.first_player_latest_testcases_passed = testcases_passed;
-            console.log("increment first player submissions: "+ testcases_passed);
-            oppSubs = match.first_player_submissions;
+            if (testcases_passed > match.first_player_max_testcases_passed) {
+                match.first_player_max_testcases_passed = testcases_passed;
+            }
+            console.log("computer first player submission variables: "+ testcases_passed);
         }
         if (userId === match.second_player._id.toString()) {
             match.second_player_submissions++;
             match.second_player_latest_testcases_passed = testcases_passed;
-            console.log("increment second player submissions: " + testcases_passed);
-            oppSubs = match.second_player_submissions;
+            if (testcases_passed > match.second_player_max_testcases_passed) {
+                match.second_player_max_testcases_passed = testcases_passed;
+            }
+            console.log("compute second player submission variables: " + testcases_passed);
         }
         match.save(); // save updated we made to match-obj attributes
 
@@ -163,7 +166,7 @@ io.on("connection", (socket) => {
         console.log("Cur socket: " + socket.id);
 
         // emit back with updated match-obj, everyone in room except sender use socket.to() else use io.to() we are sending opponents updates so dont emit to cur-person. 
-        socket.to(match.match_str).emit("opponent_update", { match: match, oppSubs:oppSubs });
+        socket.to(match.match_str).emit("opponent_update", { match: match });
  
 
     });

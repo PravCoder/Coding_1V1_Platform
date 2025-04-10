@@ -134,9 +134,9 @@ io.on("connection", (socket) => {
     socket.on("get_opponent_update", async (data) => {
         console.log("get_opponent_update_server id: " + data.match_id);
 
-        userId = data.userId;
+        userId = data.userId;  // get this users id given from client
         testcases_passed = data.testcases_passed;
-        console.log("mytestcases we got: " + testcases_passed);
+        console.log("mytestcases we got correct: " + testcases_passed);
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
         
         // Opponent Update Computations

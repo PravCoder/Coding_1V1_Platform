@@ -119,6 +119,7 @@ example
 6
 */
 router.post("/submission", async (req, res) => {
+    console.log("Yo you just requested to submit this code :))))))))))))))))))))))))))))))))))");
     const API = axios.create({
         baseURL: "https://emkc.org/api/v2/piston",
     });
@@ -137,7 +138,8 @@ router.post("/submission", async (req, res) => {
         let first_failed_tc_user_output = null;
         let submission_result = "passed";
         // iterate problem.testcases
-        // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output
+        // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output, 
+        // NOTE: have to iterate all testcases and then send api-request for each testcase too many requests
         for (const cur_testcase of match.problem.test_cases) {
 
             const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
@@ -156,6 +158,7 @@ router.post("/submission", async (req, res) => {
                 submission_result = "failed";
                 console.log("testcase #" + cur_testcase._id + " failed");
             }
+            console.log("--finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
         };
         let display_output = "";
@@ -189,7 +192,8 @@ router.post("/submission", async (req, res) => {
         });
 
     } catch (error) { 
-        console.error(error);
+        // console.error(error);
+        console.log("Too many requests - error in route");
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 

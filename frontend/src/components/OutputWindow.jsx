@@ -23,6 +23,10 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
   const socketRef = useRef(null); 
 
+
+  /* 
+  This is for running code against custom input
+  */
   const runCode = async () => {
     const sourceCode = editorRef.current.getValue();
     if (!sourceCode) return;
@@ -38,7 +42,11 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
     }
   };
 
+  /* 
+  This is for submitting the code against testcases.
+  */
   const handleSubmitCode = async (event) => {
+    console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
     try {
       const sourceCode = editorRef.current.getValue();
@@ -64,7 +72,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
 
 
     } catch (error) {
-      console.error(error.response.data.message);  
+      // console.error(error.response.data.message);  
     }
   };
 

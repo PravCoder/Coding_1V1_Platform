@@ -10,6 +10,8 @@ const cookieParser = require('cookie-parser');
 const ProblemModel = require("../models/Problem.js");
 const TestcaseModel = require("../models/Testcase.js");
 const MatchModel = require("../models/Match.js");
+const UserModel = require("../models/User.js");
+
 
 // create application-express-obj, obj that handles requests
 const app = express()
@@ -34,7 +36,12 @@ Postman: http://localhost:3001/match/create-match:
 */
 router.post("/create-match", async (req, res) => {
     try {
-        const {first_player_id, second_player_id, problem_id, match_str} = req.body; // use match-str to send emits?
+
+        
+        const {first_player_id, second_player_id, problem_id, match_str, userID} = req.body; // use match-str to send emits?
+        const first_user = await UserModel.findById(first_player_id);
+        const second_user = await UserModel.findById(second_player_id);
+
         console.log("firstp: " + first_player_id);
         console.log("secondp: " + second_player_id);
         const new_match = new MatchModel({
@@ -47,6 +54,13 @@ router.post("/create-match", async (req, res) => {
 
 
         await new_match.save();
+
+        first_user.matches.push(new_match._id);
+        second_user.matches.push(new_match._id);
+        first_user.save();
+        second_user.save();
+        // await first_user.save();
+        // await second_user.save();
 
         res.status(201).json({message: "match successfully created", match: new_match});
     } catch (error) {

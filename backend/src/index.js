@@ -55,6 +55,9 @@ const player_queue = []
 // each match_id -> set of socket.ids, purpose of this? to keep track of sockets
 const active_matches = new Map();
 
+// store current user ID in server end
+let userID = null;
+
 // listening to connection-event which is triggered when a user establishes connection with server, when they open app
 // socket-obj represents specific client that is connected. Everytime you open new tab it prints new socket.id.
 io.on("connection", (socket) => {
@@ -63,6 +66,8 @@ io.on("connection", (socket) => {
     // find-match-event listenings for users wanting to play, and connects 2 users wanting to player, is emitted when play button is clicked
     socket.on("find_match", async (data) => {
         console.log("find match for: " + data.player_id);
+        userID = data.player_id;
+
         // there are not enough players to create match add cur-player to queue to wait
         if (player_queue.length == 0) {  
             player_queue.push({ socket_id: socket.id, player_id: data.player_id });
@@ -99,7 +104,8 @@ io.on("connection", (socket) => {
                 first_player_id: player1.player_id,
                 second_player_id: player2.player_id,
                 problem_id:random_problem,
-                match_str:match_str
+                match_str:match_str,
+                userID: userID  // send userID with it which we got from client the first time above and to add it to user.matches
             })
                 .then(response => {
                     console.log("match created successfuly:", response.data);

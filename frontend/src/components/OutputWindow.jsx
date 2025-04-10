@@ -17,6 +17,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   const [opponentSubmissions, setOpponentSubmissions] = useState(0);
   const [oppsCurTestcasesPassed, setOppsCurTestcasesPassed] = useState(0);
   const [oppsMaxTestcasesPassed, setOppsMaxTestcasesPassed] = useState(0);
+  const [totalTestcases, setTotalTestcases] = useState(0);
   // cur users variables
   
   // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
@@ -45,6 +46,7 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));
+      setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
       // setMyCurTestcases(result.data.num_testcases_passed); 
       
@@ -107,8 +109,9 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   return (
     <Box w="50%">
       <h2>Opponent Submissions: {opponentSubmissions}</h2>
-      <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}</h2>
-      <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}</h2>
+      <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
+      <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
+
       <Text mb={2} fontSize="lg">
         Output
       </Text>

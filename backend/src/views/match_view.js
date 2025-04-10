@@ -170,7 +170,8 @@ router.post("/submission", async (req, res) => {
             first_failed_tc:first_failed_tc,
             first_failed_tc_user_output:first_failed_tc_user_output,
             display_output:display_output,
-            num_testcases_passed:num_testcases_passed
+            num_testcases_passed:num_testcases_passed,
+            total_testcases:total_testcases
         });
 
     } catch (error) { 

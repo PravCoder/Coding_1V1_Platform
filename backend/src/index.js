@@ -63,7 +63,7 @@ io.on("connection", (socket) => {
     // find-match-event listenings for users wanting to play, and connects 2 users wanting to player, is emitted when play button is clicked
     socket.on("find_match", async (data) => {
         console.log("find match for: " + data.player_id);
-        // there are not enough players to create match add cur-player to queue
+        // there are not enough players to create match add cur-player to queue to wait
         if (player_queue.length == 0) {  
             player_queue.push({ socket_id: socket.id, player_id: data.player_id });
         // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player

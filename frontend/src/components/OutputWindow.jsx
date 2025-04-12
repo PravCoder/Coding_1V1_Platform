@@ -7,8 +7,23 @@ import  getCurrentUser  from "../hooks/getCurrentUser";
 // connect to server from client-side establishes socketio connection with backend running on 3001
 const socket = io.connect("http://localhost:3001"); 
 
+const JUDGE0_API_URL =
+  "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true";
 
-const OutputWindow = ({ match_id, editorRef, language, input }) => {
+const JUDGE0_HEADERS = {
+  "content-type": "application/json",
+  "X-RapidAPI-Key": "66d7e1c7fdmshfe0777fc665b15fp1b48e1jsn53a1a23ac192", // Replace with your key
+  "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
+};
+const languageOptions = {
+  javascript: 63,
+  python: 71,
+  "c++": 54,
+  java: 62,
+};
+
+
+const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
   // const toast = useToast();
   const [output, setOutput] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -28,15 +43,23 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   This is for running code against custom input
   */
   const runCode = async () => {
-    const sourceCode = editorRef.current.getValue();
-    if (!sourceCode) return;
+    setIsLoading(true);
     try {
-      setIsLoading(true);
-      const { run: result } = await executeCode(language, sourceCode, input); // pass custom input
-      setOutput(result.output.split("\n")); //set output, split by new line
-      result.stderr ? setIsError(true) : setIsError(false);
+      const response = await axios.post(
+        JUDGE0_API_URL,
+        {
+          source_code: sourceCode,
+          stdin: customInput,
+          language_id: languageOptions[language],
+        },
+        {
+          headers: JUDGE0_HEADERS,
+        }
+      );
+      setOutput(response.data.stdout || response.data.stderr || "No output");
     } catch (error) {
-      console.log(error);
+      setOutput("Error running code.");
+      console.error(error);
     } finally {
       setIsLoading(false);
     }
@@ -49,7 +72,6 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
     console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
     try {
-      const sourceCode = editorRef.current.getValue();
       const result = await axios.post("http://localhost:3001/match/submission", {source_code:sourceCode, match_id:match_id});
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
@@ -115,41 +137,57 @@ const OutputWindow = ({ match_id, editorRef, language, input }) => {
   }, [match_id])
 
   return (
-    <Box w="50%">
-      <h2>Opponent Submissions: {opponentSubmissions}</h2>
-      <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
-      <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
+    <div style={{ width: "50%" }}>
+  <h2>Opponent Submissions: {opponentSubmissions}</h2>
+  <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
+  <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
 
-      <Text mb={2} fontSize="lg">
-        Output
-      </Text>
-      <Button
-        variant="outline"
-        colorScheme="green"
-        mb={4}
-        isLoading={isLoading}
-        onClick={runCode}
-      >
-        Run Code
-      </Button>
+  <p style={{ marginBottom: "0.5rem", fontSize: "1.125rem" }}>Output</p>
 
-      <Button variant="outline" colorScheme="green" mb={4} isLoading={isLoading}  onClick={handleSubmitCode}>
-        Submit Code
-      </Button>
+  <button
+    style={{
+      border: "1px solid green",
+      color: "green",
+      padding: "0.5rem 1rem",
+      marginBottom: "1rem",
+      backgroundColor: "transparent",
+      borderRadius: "0.25rem"
+    }}
+    disabled={isLoading}
+    onClick={runCode}
+  >
+    {isLoading ? "Running..." : "Run Code"}
+  </button>
 
-      <Box
-        height="75vh"
-        p={2}
-        color={isError ? "red.400" : ""}
-        border="1px solid"
-        borderRadius={4}
-        borderColor={isError ? "red.500" : "#333"}
-      >
-        {output
-          ? output.map((line, i) => <Text key={i}>{line}</Text>)  
-          : 'Click "Run Code" to see the output here'}
-      </Box>
-    </Box>
+  <button
+    onClick={runCode}
+    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+  >
+    {isLoading ? "Running..." : "Run Code"}
+  </button>
+
+  <div
+    style={{
+      height: "75vh",
+      padding: "0.5rem",
+      color: isError ? "#fc8181" : "",
+      border: "1px solid",
+      borderRadius: "0.25rem",
+      borderColor: isError ? "#f56565" : "#333"
+    }}
+  >
+    {Array.isArray(output) ? (
+      output.map((line, index) => <div key={index}>{line}</div>)
+    ) : (
+      <pre>{output}</pre>
+    )}
+  </div>
+
+  <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap">
+          {output}
+  </pre>
+</div>
+
     
   );
 };

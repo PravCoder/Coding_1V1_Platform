@@ -3,3 +3,4 @@
 
 #dependency
 /node_modules
+/.env

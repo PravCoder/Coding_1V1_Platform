@@ -5,6 +5,14 @@ import { CODE_SNIPPETS, theme } from "../constants/api";
 import OutputWindow from "../components/OutputWindow";
 import axios from "axios";
 
+const languageOptions = {
+  javascript: 63,
+  python: 71,
+  "c++": 54,
+  java: 62,
+};
+
+
 
 /* 
 Custom input has to be like:
@@ -14,10 +22,12 @@ Custom input has to be like:
 
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
-  const [value, setValue] = useState("");
+  const [sourceCode, setSourceCode] = useState("// write your code here lil bro");
+  const [customInput, setCustomInput] = useState("");
   const [language, setLanguage] = useState("python");
-  const [input, setInput] = useState(""); // State for custom input
   const [problem, setProblem] = useState({});
+
+  const [isLoading, setIsLoading] = useState(false);
 
   const onMount = (editor) => {
     editorRef.current = editor;
@@ -40,53 +50,45 @@ const CodeEditor = ({ match_id }) => {
   }, [match_id]);
 
   return (
-    
-    <Box>
-      <h4>{problem.title} - {problem.difficulty}</h4>
-      <p>{problem.description}</p>
-      <label><b>Examples:</b></label>
-      <p>{problem.examples}</p>
+    <div className="p-4 space-y-4 max-w-4xl mx-auto">
+      <div className="flex items-center gap-4">
+        <label className="text-sm font-semibold">Language:</label>
+        <select
+          value={language}
+          onChange={(e) => setLanguage(e.target.value)}
+          className="border p-1 rounded"
+        >
+          {Object.keys(languageOptions).map((lang) => (
+            <option key={lang} value={lang}>
+              {lang}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      <HStack spacing={4}>
-        
-        <Box w="50%">
-          {/* <LanguageSelector language={language} onSelect={onSelect} /> */}
-          <Editor
-            options={{
-              minimap: {
-                enabled: false,
-              },
-            }}
-            height="65vh"
-            theme="vs-dark"
-            language={language}
-            defaultValue={CODE_SNIPPETS[language]}
-            onMount={onMount}
-            value={value}
-            onChange={(value) => setValue(value)}
-          />
+      <Editor
+        height="400px"
+        defaultLanguage={language}
+        language={language}
+        value={sourceCode}
+        onChange={(value) => setSourceCode(value)}
+        theme="vs-dark"
+      />
 
-          
-          <Box mt={4}>
-            <label> <b>Custom Input </b></label>
-            <textarea
-              style={{
-                width: "100%",
-                height: "100px",
-                border: "1px solid #ccc",
-                borderRadius: "4px",
-                padding: "8px",
-                backgroundColor: "#1e1e1e",
-                color: "#d4d4d4",
-              }}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-            />
-          </Box>
-        </Box>
-        <OutputWindow match_id={match_id} editorRef={editorRef} language={language} input={input} />
-      </HStack>
-    </Box>
+      <textarea
+        placeholder="Custom input (stdin)"
+        value={customInput}
+        onChange={(e) => setCustomInput(e.target.value)}
+        className="w-full h-20 border p-2 font-mono rounded"
+      />
+
+
+      <div className="mt-4">
+        <h2 className="font-bold text-lg">Output:</h2>
+        <OutputWindow match_id={match_id} editorRef={editorRef} sourceCode={sourceCode} customInput={customInput} language={language} />
+
+      </div>
+    </div>
   );
 };
 

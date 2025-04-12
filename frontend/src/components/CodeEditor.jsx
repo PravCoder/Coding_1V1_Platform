@@ -18,11 +18,13 @@ const languageOptions = {
 Custom input has to be like:
 1 2 3
 9
+
+Code: nums = list(map(int, input().split())) 
 */
 
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
-  const [sourceCode, setSourceCode] = useState("// write your code here lil bro");
+  const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split())) ");
   const [customInput, setCustomInput] = useState("");
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});
@@ -52,6 +54,8 @@ const CodeEditor = ({ match_id }) => {
   return (
     <div className="p-4 space-y-4 max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
+        <h3>Problem: {problem.title}</h3>
+        <h4>Description: {problem.description}</h4>
         <label className="text-sm font-semibold">Language:</label>
         <select
           value={language}

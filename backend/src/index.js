@@ -189,10 +189,10 @@ io.on("connection", (socket) => {
             active_matches.set(match.match_id, new Set());
         }
 
-        console.log(`Socket ${socket.id} rejoined room ${match.match_str}`);
+        // console.log(`Socket ${socket.id} rejoined room ${match.match_str}`);
 
         const sockets = await io.in(match.match_str).fetchSockets();
-        console.log(`Sockets in room rejoin_match" ${match.match_str}: `, sockets.map(s => s.id));
+        // console.log(`Sockets in room rejoin_match" ${match.match_str}: `, sockets.map(s => s.id));
     });
 
 });

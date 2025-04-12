@@ -7,14 +7,7 @@ import  getCurrentUser  from "../hooks/getCurrentUser";
 // connect to server from client-side establishes socketio connection with backend running on 3001
 const socket = io.connect("http://localhost:3001"); 
 
-const JUDGE0_API_URL =
-  "https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true";
 
-const JUDGE0_HEADERS = {
-  "content-type": "application/json",
-  "X-RapidAPI-Key": "66d7e1c7fdmshfe0777fc665b15fp1b48e1jsn53a1a23ac192", // Replace with your key
-  "X-RapidAPI-Host": "judge0-ce.p.rapidapi.com",
-};
 const languageOptions = {
   javascript: 63,
   python: 71,
@@ -24,8 +17,10 @@ const languageOptions = {
 
 
 const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
-  // const toast = useToast();
+  // define output variables to display near output box
   const [output, setOutput] = useState(null);
+  const [time, setTime] = useState(null);
+  const [memory, setMemory] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
   // opponent progress variables
@@ -43,23 +38,18 @@ const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
   This is for running code against custom input
   */
   const runCode = async () => {
-    setIsLoading(true);
-    try {
-      const response = await axios.post(
-        JUDGE0_API_URL,
-        {
-          source_code: sourceCode,
-          stdin: customInput,
-          language_id: languageOptions[language],
-        },
-        {
-          headers: JUDGE0_HEADERS,
-        }
-      );
-      setOutput(response.data.stdout || response.data.stderr || "No output");
+    try{
+      const response = await axios.post(`http://localhost:3001/match/run-code`, {sourceCode:sourceCode, customInput:customInput, languageId:languageOptions[language]});
+      console.log("Output running code with custom input: " + response.data);
+      setOutput(response.data.stdout || response.data.stderr || "Your code produced no output");
+      setTime(response.data.time);
+      setMemory(response.data.memory);
+
     } catch (error) {
-      setOutput("Error running code.");
+      setOutput("Error running code with custom input.");
       console.error(error);
+
+      
     } finally {
       setIsLoading(false);
     }
@@ -160,22 +150,14 @@ const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
   </button>
 
   <button
-    onClick={runCode}
+    onClick={handleSubmitCode}
     className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
   >
-    {isLoading ? "Running..." : "Run Code"}
+    {isLoading ? "Running..." : "Submit Code"}
   </button>
 
-  <div
-    style={{
-      height: "75vh",
-      padding: "0.5rem",
-      color: isError ? "#fc8181" : "",
-      border: "1px solid",
-      borderRadius: "0.25rem",
-      borderColor: isError ? "#f56565" : "#333"
-    }}
-  >
+  <div style={{ height: "75vh",padding: "0.5rem",color: isError ? "#fc8181" : "",border: "1px solid",borderRadius: "0.25rem",borderColor: isError ? "#f56565" : "#333"}}>
+    Time: {time} ms, Memory: {memory} kb
     {Array.isArray(output) ? (
       output.map((line, index) => <div key={index}>{line}</div>)
     ) : (

@@ -11,6 +11,7 @@ const ProblemModel = require("../models/Problem.js");
 const TestcaseModel = require("../models/Testcase.js");
 const MatchModel = require("../models/Match.js");
 const UserModel = require("../models/User.js");
+require('dotenv').config();  
 
 
 // create application-express-obj, obj that handles requests
@@ -95,6 +96,26 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
 
 
 
+
+/* 
+This route is for running custom input code, we have it in backend because we need access to the api key
+*/
+router.post("/run-code", async (req, res) => {
+    const { sourceCode, customInput, languageId } = req.body;
+    try {
+        console.log("JUDGE0_API_URL: " + JUDGE0_API_URL); // Ensure this is correct
+        console.log("API-KEY: " + JUDGE0_HEADERS["X-RapidAPI-Key"]); 
+        console.log("Received data:", { sourceCode, customInput, languageId });
+
+        const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode, stdin: customInput, language_id: languageId,}, { headers: JUDGE0_HEADERS } );
+        console.log("API Response:", response.data);
+        res.status(200).json({ message: "code ran successfully", stdout:response.data.stdout, stderr:response.data.stderr, time:response.data.time,memory:response.data.memory});
+
+    } catch (error) {
+        res.status(500).json({ message: "error running code with custom input", error: error.message });
+    }
+
+});
 
 
 /* 
@@ -203,6 +224,18 @@ router.post("/submission", async (req, res) => {
 
 
 // ***HELPER FUNCTIONS***
+
+const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true';
+const JUDGE0_HEADERS = {
+  'Content-Type': 'application/json',
+  'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,
+  'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
+};
+
+
+
+
+
 function format_input(input) {
     const parsedInput = JSON.parse(input);
     return parsedInput

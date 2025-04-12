@@ -62,7 +62,7 @@ const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
     console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
     try {
-      const result = await axios.post("http://localhost:3001/match/submission", {source_code:sourceCode, match_id:match_id});
+      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language]});
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));

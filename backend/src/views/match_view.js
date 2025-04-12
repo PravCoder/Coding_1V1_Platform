@@ -101,6 +101,7 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
 This route is for running custom input code, we have it in backend because we need access to the api key
 */
 router.post("/run-code", async (req, res) => {
+    console.log("\n----Running Code with Custom Input-----:")
     const { sourceCode, customInput, languageId } = req.body;
     try {
         console.log("JUDGE0_API_URL: " + JUDGE0_API_URL); // Ensure this is correct
@@ -112,6 +113,7 @@ router.post("/run-code", async (req, res) => {
         res.status(200).json({ message: "code ran successfully", stdout:response.data.stdout, stderr:response.data.stderr, time:response.data.time,memory:response.data.memory});
 
     } catch (error) {
+        console.log("error running code custom inp: " + error.message);
         res.status(500).json({ message: "error running code with custom input", error: error.message });
     }
 
@@ -121,6 +123,7 @@ router.post("/run-code", async (req, res) => {
 /* 
 Input given to compiler API will be "1 2 3\n9\n4 5 6\n7\n8", where each input is seperated by \n.
 Only handles array and integer inputs problems. Pass in match-id in body. 
+
 nums = list(map(int, input().split()))
 target = int(input())
 
@@ -140,16 +143,11 @@ example
 6
 */
 router.post("/submission", async (req, res) => {
-    console.log("Yo you just requested to submit this code :))))))))))))))))))))))))))))))))))");
-    const API = axios.create({
-        baseURL: "https://emkc.org/api/v2/piston",
-    });
+    console.log("-----Submission Processing Testcases-----:");
 
-    const {source_code, match_id} = req.body;
+    const {sourceCode, languageId, match_id} = req.body;
 
     try {
-        // get match obj
-        console.log("match-id: " + match_id);
         const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
 
         // some variables for the result of the submission
@@ -164,20 +162,23 @@ router.post("/submission", async (req, res) => {
         for (const cur_testcase of match.problem.test_cases) {
 
             const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
-            const { run: result } = await executeCode("python", source_code, formatted_input); // compiler api request, pass in input of current testcases
-            let user_output = result.output;
+            // console.log("formatted-input: \n" + formatted_input);
+            console.log("Sending to Judge0:", { source_code: sourceCode, stdin: String(formatted_input), language_id: languageId, });
+            const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode,stdin: String(formatted_input), language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
+            // console.log("API Response Submit Code: " +response.data);
+            let user_output = response.data.stdout;
             user_output = user_output.replace(/\n/g, "");
-            console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
+            // console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
             
             // check current testcase
             if (user_output === cur_testcase.output) { 
                 num_testcases_passed++;
-                console.log("testcase #" + cur_testcase._id + " passed");
+                // console.log("testcase #" + cur_testcase._id + " passed");
             } else {
                 first_failed_tc = cur_testcase;
                 first_failed_tc_user_output = user_output;
                 submission_result = "failed";
-                console.log("testcase #" + cur_testcase._id + " failed");
+                // console.log("testcase #" + cur_testcase._id + " failed");
             }
             console.log("--finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
@@ -214,7 +215,7 @@ router.post("/submission", async (req, res) => {
 
     } catch (error) { 
         // console.error(error);
-        console.log("Too many requests - error in route");
+        console.log("Error submitting code: " + error);
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 

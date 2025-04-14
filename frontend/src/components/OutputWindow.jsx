@@ -16,7 +16,7 @@ const languageOptions = {
 };
 
 
-const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
+const OutputWindow = ({ match_id, match, sourceCode, customInput,  language }) => {
   // define output variables to display near output box
   const [output, setOutput] = useState(null);
   const [time, setTime] = useState(null);
@@ -93,38 +93,46 @@ const OutputWindow = ({ match_id, sourceCode, customInput,  language }) => {
       socketRef.current = io("http://localhost:3001");
       console.log("creating new socket connection client:", socketRef.current.id);
     }
-    socketRef.current.emit("rejoin_match", { match_id }); // if their socket cahnges rejoin-match
-
+    
+    socketRef.current.emit("rejoin_match", { match_id });
+  
+    // update the opponent variables for display on client-side, this
     const handleOpponentUpdate = (data) => {
-      console.log("Received opponent_update. Socket ID:", socketRef.current.id);
-      console.log("Update data:", data);
-      const userId = getCurrentUser();
-      console.log("user: " + userId + " first_id: " + data.match.first_player._id + " second_id: " +data.match.second_player._id);
-      // set the other players submissions, THIS IS NOT RUNNING??
-      if (userId === data.match.first_player.toString()) {   // first-player
-        setOpponentSubmissions(data.match.second_player_submissions);
-        setOppsCurTestcasesPassed(data.match.second_player_latest_testcases_passed);
-        setOppsMaxTestcasesPassed(data.match.second_player_max_testcases_passed);
-        console.log("set first-player updates in client");
+      console.log("Handle Opponent Update func: ", data);
+      console.log("Received match data:", data.match);
+      
+      if (!data.match) return;
+      
+      const currentUserId = getCurrentUser();
+      if (!currentUserId) return;
+  
+      // comapre as strings since MongoDB ObjectIds come as objects
+      const isFirstPlayer = data.match.first_player && data.match.first_player.toString() === currentUserId.toString();
+      
+      console.log("Current user ID:", currentUserId);
+      console.log("Is first player:", isFirstPlayer);
+      
+      if (isFirstPlayer) {
+        setOpponentSubmissions(data.match.second_player_submissions || 0);
+        setOppsCurTestcasesPassed(data.match.second_player_latest_testcases_passed || 0);
+        setOppsMaxTestcasesPassed(data.match.second_player_max_testcases_passed || 0);
+      } else {
+        setOpponentSubmissions(data.match.first_player_submissions || 0);
+        setOppsCurTestcasesPassed(data.match.first_player_latest_testcases_passed || 0);
+        setOppsMaxTestcasesPassed(data.match.first_player_max_testcases_passed || 0);
       }
-      if (userId === data.match.second_player.toString()) {   // second-player
-        setOpponentSubmissions(data.match.first_player_submissions);
-        setOppsCurTestcasesPassed(data.match.first_player_latest_testcases_passed);
-        setOppsMaxTestcasesPassed(data.match.first_player_max_testcases_passed);
-        console.log("set second-player updates in client");
-      }
-
-      // setOpponentSubmissions(data.oppSubs);
+      
+      console.log("Updated opponent submissions:", isFirstPlayer ? 
+        data.match.second_player_submissions : data.match.first_player_submissions);
     };
-    // when we get an emit from server do handleOpponentUpdate, it has updated match-obj
-    socketRef.current.on("opponent_update", handleOpponentUpdate); 
-
-    // cleanup function
+  
+    // this is listening for updated match object.
+    socketRef.current.on("opponent_update", handleOpponentUpdate);
+  
     return () => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
     };
-  
-  }, [match_id])
+  }, [match_id]);
 
   return (
     <div style={{ width: "50%" }}>

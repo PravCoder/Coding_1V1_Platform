@@ -22,6 +22,7 @@ Custom input has to be like:
 Code: nums = list(map(int, input().split())) 
 */
 
+// WARNING WE MOVED EVERYTHING INTO THIS FILE IN Match_Making_frontend branch, make sure to merge
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
   const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");

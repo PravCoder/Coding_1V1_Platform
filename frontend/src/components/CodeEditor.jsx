@@ -5,6 +5,7 @@ import { CODE_SNIPPETS, theme } from "../constants/api";
 import OutputWindow from "../components/OutputWindow";
 import axios from "axios";
 
+// language ids for rapid api
 const languageOptions = {
   javascript: 63,
   python: 71,

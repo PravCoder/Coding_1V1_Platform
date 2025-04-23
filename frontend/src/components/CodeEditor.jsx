@@ -31,6 +31,7 @@ const CodeEditor = ({ match_id }) => {
   const [customInput, setCustomInput] = useState("");
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});
+  const [showOpponentBox, setShowOpponentBox] = useState(true);
   
 
   // define output variables to display near output box
@@ -165,70 +166,98 @@ const CodeEditor = ({ match_id }) => {
 
 
   return (
-    <div className="p-4 space-y-4 max-w-4xl mx-auto">
-      <h2>Opponent Submissions: {opponentSubmissions}</h2>
-      <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
-      <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
-      <div className="flex items-center gap-4">
-        <h3>Problem: {problem.title}</h3>
-        <h4>Description: {problem.description}</h4>
-        <label className="text-sm font-semibold">Language:</label>
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="border p-1 rounded"
-        >
-          {Object.keys(languageOptions).map((lang) => (
-            <option key={lang} value={lang}>
-              {lang}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <Editor
-        height="400px"
-        defaultLanguage={language}
-        language={language}
-        value={sourceCode}
-        onChange={(value) => setSourceCode(value)}
-        theme="vs-dark"
-      />
-
-      <textarea
-        placeholder="Custom input (stdin)"
-        value={customInput}
-        onChange={(e) => setCustomInput(e.target.value)}
-        className="w-full h-20 border p-2 font-mono rounded"
-      />
-
-
-      <div className="mt-4">
-        <h2 className="font-bold text-lg">Output:</h2>
-        <button style={{ border: "1px solid green",color: "green",padding: "0.5rem 1rem",marginBottom: "1rem",backgroundColor: "transparent",borderRadius: "0.25rem"}}  disabled={isLoading} onClick={runCode}>
-          {isLoading ? "Running..." : "Run Code"}
-        </button>
-
-  <button
-    onClick={handleSubmitCode}
-    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-  >
-    {isLoading ? "Running..." : "Submit Code"}
-  </button>
-
-  <div style={{ height: "75vh",padding: "0.5rem",color: isError ? "#fc8181" : "",border: "1px solid",borderRadius: "0.25rem",borderColor: isError ? "#f56565" : "#333"}}>
-    Time: {time} ms, Memory: {memory} kb
-    {Array.isArray(output) ? (
-      output.map((line, index) => <div key={index}>{line}</div>)
-    ) : (
-      <pre>{output}</pre>
-    )}
-  </div>
-
-  <pre className="bg-gray-100 p-4 rounded whitespace-pre-wrap">
-          {output}
-  </pre>
-
+    <div className="h-screen bg-[#1E1E1E] text-white">
+      <div className="flex h-full">
+        <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
+          <div className="bg-[#2D2D2D] rounded-lg p-6 h-full">
+            <div className="flex items-center mb-4">
+              <h2 className="text-lg font-semibold">Problem: {problem.title}</h2>
+              <span className="ml-2 text-green-500">• EASY</span>
+            </div>
+            <div className="text-[#CCCCCC] mb-6">
+              <h4>Description: {problem.description}</h4>
+              <div className="m-6">
+                <div className="p-4 bg-[#1E1E1E] border-r border-[#333333]">
+                  <h3 className="text-[#CCCCCC] font-semibold mb-2">EXAMPLES:</h3>
+                </div>
+              </div>         
+            </div>
+          </div>
+        </div>
+        <div className={`p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto ${showOpponentBox ? 'w-full md:w-1/2 lg:w-1/3' : 'w-full md:w-2/3 lg:w-2/3'}`}>
+          <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
+            <div className="flex justify-end space-x-2">
+              <button 
+                onClick={() => setShowOpponentBox(!showOpponentBox)} 
+                className="px-3 py-1 bg-[#333333] text-white rounded hover:bg-[#444444] transition-colors"
+                title={showOpponentBox ? "Hide opponent" : "Show opponent"}
+              >
+                <span className="text-xl font-bold">
+                  {showOpponentBox ? "←" : "→"}
+                </span>
+              </button>
+              <button onClick={() => {}} className="px-4 py-1 bg-[#333333] text-white rounded">
+                <h3 className="text-md font-semibold">FORFIT</h3>
+              </button>
+              <button className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold" disabled={isLoading} onClick={runCode}>
+                {isLoading ? "Running..." : "RUN CODE"}
+              </button>
+              <button className="px-4 py-1 bg-red-600 text-white rounded text-md font-semibold" disabled={isLoading} onClick={handleSubmitCode}>
+                {isLoading ? "Running..." : "SUBMIT"}
+              </button>
+            </div>
+            <label className="text-sm font-semibold">Language: </label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="border p-3 rounded bg-transparent"
+            >
+              {Object.keys(languageOptions).map((lang) => (
+                <option key={lang} value={lang}>
+                  {lang}
+                </option>
+              ))}
+            </select>
+            <Editor
+              className="mt-4 rounded"
+              height="500px"
+              defaultLanguage={language}
+              language={language}
+              value={sourceCode}
+              onChange={(value) => setSourceCode(value)}
+              theme="vs-dark"
+            />
+            <textarea
+              placeholder="Custom input (stdin)"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value)}
+              className="w-full bg-[#2D2D2D] h-20 border p-2 font-mono rounded mt-6"
+            />
+            <div className="mt-4">
+              <h2 className="font-bold text-lg">Output:</h2>
+              <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
+                Time: {time} ms, Memory: {memory} kb
+                {Array.isArray(output) ? (
+                  output.map((line, index) => <div key={index}>{line}</div>)
+                ) : (
+                  <pre>{output}</pre>
+                )}
+              </div>
+              <pre className="p-4 rounded whitespace-pre-wrap">
+                {output}
+              </pre>
+            </div>
+          </div>
+        </div>
+        {showOpponentBox && (
+          <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
+            <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
+              <h2 className="text-lg">Opponent Submissions: {opponentSubmissions}</h2>
+              <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
+              <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

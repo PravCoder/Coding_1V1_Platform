@@ -5,6 +5,7 @@ import { CODE_SNIPPETS, theme } from "../constants/api";
 import  getCurrentUser  from "../hooks/getCurrentUser";
 import axios from "axios";
 import io from "socket.io-client";
+import MatchTimer from "./MatchTimer";
 const socket = io.connect("http://localhost:3001"); 
 
 
@@ -32,7 +33,59 @@ const CodeEditor = ({ match_id }) => {
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});
   const [showOpponentBox, setShowOpponentBox] = useState(true);
+  const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [isMatchStarted, setIsMatchStarted] = useState(() => {
+    return !!localStorage.getItem('match_start_time');
+  });
+  const [shouldRestartTimer, setShouldRestartTimer] = useState(false);
   
+  // Initialize matchStartTime from localStorage or create new one
+  const [matchStartTime, setMatchStartTime] = useState(() => {
+    const savedTime = localStorage.getItem('match_start_time');
+    return savedTime ? new Date(savedTime) : null;
+  });
+
+  const handleCountdownComplete = (newStartTime) => {
+    setMatchStartTime(newStartTime);
+    localStorage.setItem('match_start_time', newStartTime.toISOString());
+  };
+
+  // Start match when both players are ready
+  useEffect(() => {
+    if (isMatchStarted) return;
+
+    // This is where you would check if both players are ready
+    // For now, we'll just start the match after a short delay
+    const timer = setTimeout(() => {
+      setIsMatchStarted(true);
+      // Clear any existing timer state
+      localStorage.removeItem('match_start_time');
+      setMatchStartTime(null);
+    }, 2000); // Start match after 2 seconds
+
+    return () => clearTimeout(timer);
+  }, [isMatchStarted]);
+
+  // Handle match restart
+  const handleRestartMatch = () => {
+    setShouldRestartTimer(true);
+    setIsMatchStarted(false);
+    // Reset other match-related states here
+    setTimeout(() => {
+      setShouldRestartTimer(false);
+      setIsMatchStarted(true);
+    }, 100);
+  };
+
+  // Clean up localStorage when component unmounts
+  useEffect(() => {
+    return () => {
+      // Only remove the timer if the match is over
+      if (!isMatchStarted) {
+        localStorage.removeItem('match_start_time');
+      }
+    };
+  }, [isMatchStarted]);
 
   // define output variables to display near output box
   const [output, setOutput] = useState(null);
@@ -166,7 +219,7 @@ const CodeEditor = ({ match_id }) => {
 
 
   return (
-    <div className="h-screen bg-[#1E1E1E] text-white">
+    <div className={`h-screen bg-[#1E1E1E] text-white ${isCountdownActive ? 'pointer-events-none' : ''}`}>
       <div className="flex h-full">
         <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
           <div className="bg-[#2D2D2D] rounded-lg p-6 h-full">
@@ -191,18 +244,31 @@ const CodeEditor = ({ match_id }) => {
                 onClick={() => setShowOpponentBox(!showOpponentBox)} 
                 className="px-3 py-1 bg-[#333333] text-white rounded hover:bg-[#444444] transition-colors"
                 title={showOpponentBox ? "Hide opponent" : "Show opponent"}
+                disabled={isCountdownActive}
               >
                 <span className="text-xl font-bold">
                   {showOpponentBox ? "←" : "→"}
                 </span>
               </button>
-              <button onClick={() => {}} className="px-4 py-1 bg-[#333333] text-white rounded">
+              <button 
+                onClick={() => {}} 
+                className="px-4 py-1 bg-[#333333] text-white rounded"
+                disabled={isCountdownActive}
+              >
                 <h3 className="text-md font-semibold">FORFIT</h3>
               </button>
-              <button className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold" disabled={isLoading} onClick={runCode}>
+              <button 
+                className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold" 
+                disabled={isLoading || isCountdownActive} 
+                onClick={runCode}
+              >
                 {isLoading ? "Running..." : "RUN CODE"}
               </button>
-              <button className="px-4 py-1 bg-red-600 text-white rounded text-md font-semibold" disabled={isLoading} onClick={handleSubmitCode}>
+              <button 
+                className="px-4 py-1 bg-red-600 text-white rounded text-md font-semibold" 
+                disabled={isLoading || isCountdownActive} 
+                onClick={handleSubmitCode}
+              >
                 {isLoading ? "Running..." : "SUBMIT"}
               </button>
             </div>
@@ -211,6 +277,7 @@ const CodeEditor = ({ match_id }) => {
               value={language}
               onChange={(e) => setLanguage(e.target.value)}
               className="border p-3 rounded bg-transparent"
+              disabled={isCountdownActive}
             >
               {Object.keys(languageOptions).map((lang) => (
                 <option key={lang} value={lang}>
@@ -226,12 +293,14 @@ const CodeEditor = ({ match_id }) => {
               value={sourceCode}
               onChange={(value) => setSourceCode(value)}
               theme="vs-dark"
+              options={{ readOnly: isCountdownActive }}
             />
             <textarea
               placeholder="Custom input (stdin)"
               value={customInput}
               onChange={(e) => setCustomInput(e.target.value)}
               className="w-full bg-[#2D2D2D] h-20 border p-2 font-mono rounded mt-6"
+              disabled={isCountdownActive}
             />
             <div className="mt-4">
               <h2 className="font-bold text-lg">Output:</h2>
@@ -252,6 +321,12 @@ const CodeEditor = ({ match_id }) => {
         {showOpponentBox && (
           <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
             <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
+              <MatchTimer 
+                startTime={matchStartTime} 
+                onCountdownComplete={handleCountdownComplete}
+                isMatchStarted={isMatchStarted}
+                shouldRestart={shouldRestartTimer}
+              />
               <h2 className="text-lg">Opponent Submissions: {opponentSubmissions}</h2>
               <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
               <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>

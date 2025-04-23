@@ -72,24 +72,24 @@ router.post("/create-match", async (req, res) => {
 });
 
 /* 
-Fetch the problem-obj. 
-Fetch the match-obj because it holds the current state of our match variables.
+For displaying problem info have to fetch match, to access match.problem. 
 Every time page is refreshed this is bottle neck. So cache match. 
 */
 router.get("/get-match-problem/:match_id", async (req, res) => {
     const { match_id } = req.params;
 
     try {
-        const match = await MatchModel.findById(match_id).populate("problem"); // fill in problen attribute not just its id
+        const match = await MatchModel.findById(match_id).populate('problem'); // fill in problen attribute not just its id
 
         if (!match) {
-        return res.status(404).json({ message: "match not found" });
+        return res.status(404).json({ message: "Match not found" });
         }
-        res.status(200).json({ message: "match retrieved successfully", problem:match.problem, match:match });
+
+        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.test_cases.length });
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ message: "an error occurred getting match-problem", error: error.message });
+        res.status(500).json({ message: "An error occurred", error: error.message });
     }
 
 });
@@ -173,14 +173,14 @@ router.post("/submission", async (req, res) => {
             // check current testcase
             if (user_output === cur_testcase.output) { 
                 num_testcases_passed++;
-                console.log("TESTCASE #" + cur_testcase._id + " passed");
+                // console.log("testcase #" + cur_testcase._id + " passed");
             } else {
                 first_failed_tc = cur_testcase;
                 first_failed_tc_user_output = user_output;
                 submission_result = "failed";
-                console.log("TESTCASE #" + cur_testcase._id + " failed");
+                // console.log("testcase #" + cur_testcase._id + " failed");
             }
-            // console.log("--finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
+            console.log("--finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
         };
         let display_output = "";
@@ -204,7 +204,6 @@ router.post("/submission", async (req, res) => {
 
         match.save();
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
-        console.log("total-test-cases given to client: " + total_testcases);
         res.status(201).json({
             message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
             first_failed_tc:first_failed_tc,

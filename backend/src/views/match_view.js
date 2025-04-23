@@ -85,7 +85,7 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
         return res.status(404).json({ message: "Match not found" });
         }
 
-        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem });
+        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.test_cases.length });
 
     } catch (error) {
         console.error(error);

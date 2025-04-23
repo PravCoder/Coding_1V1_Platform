@@ -113,7 +113,9 @@ const CodeEditor = ({ match_id }) => {
     try {
       // this is slowing down application have to fetch problem, every time so store match in cache. 
       const response = await axios.get(`http://localhost:3001/match/get-match-problem/${match_id}`);
+      console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
+      setTotalTestcases(response.data.problem.test_cases.length);
       console.log(response.data.problem);
     } catch (error) {
       console.error(error.response.data.message);  
@@ -121,7 +123,7 @@ const CodeEditor = ({ match_id }) => {
   };
 
   useEffect(() => {
-    fetchProblem();
+    fetchProblem();    
 
 
     if (!socketRef.current) {

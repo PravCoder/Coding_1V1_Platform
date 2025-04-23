@@ -150,10 +150,10 @@ io.on("connection", (socket) => {
             console.log("computer first player submission variables: "+ testcases_passed);
         }
         if (userId === match.second_player._id.toString()) {
-            match.second_player_submissions++;
-            match.second_player_latest_testcases_passed = testcases_passed;
+            match.second_player_submissions++;                                // NUM SUBMISSIONS
+            match.second_player_latest_testcases_passed = testcases_passed;   // LATEST TESTCASES PASSED
             if (testcases_passed > match.second_player_max_testcases_passed) {
-                match.second_player_max_testcases_passed = testcases_passed;
+                match.second_player_max_testcases_passed = testcases_passed;     // MAX TESTCASES PASSED
             }
             console.log("compute second player submission variables: " + testcases_passed);
         }
@@ -172,7 +172,16 @@ io.on("connection", (socket) => {
         console.log("Cur socket: " + socket.id);
 
         // emit back with updated match-obj, everyone in room except sender use socket.to() else use io.to() we are sending opponents updates so dont emit to cur-person. 
-        socket.to(match.match_str).emit("opponent_update", { match: match });
+        socket.to(match.match_str).emit("opponent_update", {match:{
+            first_player: match.first_player,
+            second_player: match.second_player,
+            first_player_submissions: match.first_player_submissions,
+            second_player_submissions: match.second_player_submissions,
+            first_player_latest_testcases_passed: match.first_player_latest_testcases_passed,
+            second_player_latest_testcases_passed: match.second_player_latest_testcases_passed,
+            first_player_max_testcases_passed: match.first_player_max_testcases_passed,
+            second_player_max_testcases_passed: match.second_player_max_testcases_passed
+        }});
  
 
     });

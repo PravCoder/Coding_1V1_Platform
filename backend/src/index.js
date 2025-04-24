@@ -188,7 +188,9 @@ io.on("connection", (socket) => {
 
     socket.on("get_my_update", async (data) => {
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
-        socket.to(match.match_str).emit("user_update", {match:{
+
+        // emits to only only sender which is cur my user 
+        socket.emit("user_update", {match:{
             first_player: match.first_player,
             second_player: match.second_player,
             first_player_submissions: match.first_player_submissions,

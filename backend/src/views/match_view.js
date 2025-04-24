@@ -143,7 +143,7 @@ example
 6
 */
 router.post("/submission", async (req, res) => {
-    console.log("-----Submission Processing Testcases-----:");
+    console.log("-----Submission Start Processing Testcases-----:");
 
     const {sourceCode, languageId, match_id, userID} = req.body;
 
@@ -212,7 +212,17 @@ router.post("/submission", async (req, res) => {
             await match.save();
         }
 
-        match.save();
+        
+
+        // if they passed all testcases then this player has won the match, so update the match variables to relfect this
+        let found_winner = false;
+        if (submission_result === "passed") {
+            console.log("Winner found in backend submission");
+            match.winner = userID;
+            found_winner = true;
+        }
+        await match.save();
+
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({
             message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
@@ -221,6 +231,8 @@ router.post("/submission", async (req, res) => {
             display_output:display_output,
             num_testcases_passed:num_testcases_passed,
             total_testcases:total_testcases, 
+            found_winner: found_winner
+
         });
 
     } catch (error) { 

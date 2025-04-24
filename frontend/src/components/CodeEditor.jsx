@@ -1,5 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Box, HStack } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom";
+
 import { Editor } from "@monaco-editor/react";
 import { CODE_SNIPPETS, theme } from "../constants/api";
 import  getCurrentUser  from "../hooks/getCurrentUser";
@@ -28,6 +30,7 @@ Code: nums = list(map(int, input().split()))
 
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
+  const navigate = useNavigate();
   const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
   const [customInput, setCustomInput] = useState("");
   const [language, setLanguage] = useState("python");
@@ -153,7 +156,14 @@ const CodeEditor = ({ match_id }) => {
         setOppsMaxTestcasesPassed(data.match.first_player_max_testcases_passed);
         console.log("set second-player updates in client");
       }
+
+      // other-user presses submit and they pass all testcases, we should redirect ourselves to 
+      if (data.found_winner == true) {
+        console.log("redirect to amtch outcome because other person won")
+        navigate(`/match-outcome/${match_id}`);
+      }
     };
+    
     const handleUserMyUpdate = (data) => {
       const userId = getCurrentUser();
       const userIdStr = userId.toString();
@@ -246,6 +256,11 @@ const CodeEditor = ({ match_id }) => {
         socketRef.current.emit("get_my_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
           console.log("get_my_update callback:", response);
         });
+
+        // when cur-user presses submit and passes testcases redirect them to match outcome page
+        if (result.data.found_winner == true) {
+          navigate(`/match-outcome/${match_id}`);
+        }
       }
 
 

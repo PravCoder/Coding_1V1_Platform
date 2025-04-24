@@ -137,39 +137,15 @@ io.on("connection", (socket) => {
         userId = data.userId;  // get this users id given from client
         // testcases_passed = data.testcases_passed;
         // console.log("mytestcases we got correct: " + testcases_passed);
-        const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching
+        const match = await MatchModel.findById(data.match_id).populate("problem"); // this query is slowing down application for every submission, so use caching
         
-        // // Opponent Update Computations
-        // // finding who submission it is, because they emitted get_opponent_update_event
-        // if (userId === match.first_player._id.toString()) {  // first-player
-        //     match.first_player_submissions++;
-        //     match.first_player_latest_testcases_passed = testcases_passed;
-        //     if (testcases_passed > match.first_player_max_testcases_passed) {
-        //         match.first_player_max_testcases_passed = testcases_passed;
-        //     }
-        //     console.log("computer first player submission variables: "+ testcases_passed);            
-        // }
-        // if (userId === match.second_player._id.toString()) {
-        //     match.second_player_submissions++;                                // NUM SUBMISSIONS
-        //     match.second_player_latest_testcases_passed = testcases_passed;   // LATEST TESTCASES PASSED
-        //     if (testcases_passed > match.second_player_max_testcases_passed) {
-        //         match.second_player_max_testcases_passed = testcases_passed;     // MAX TESTCASES PASSED
-        //     }
-        //     console.log("compute second player submission variables: " + testcases_passed);
-        // }
-        // match.save(); // save updated we made to match-obj attributes
-
-        // // make sure sockets are in match-str-room, by getting them and adding them. 
-        // const sockets = await io.in(match.match_str).fetchSockets();  // get all sockets in match-str-room
-        // if (!sockets.some(s => s.id === socket.id)) {
-        //     socket.join(match.match_str);
-        // }
-
-        // // show which sockets are in this matchs-room, after refresh they are removed from room & get new socket.id
-        // io.in(match.match_str).fetchSockets().then((sockets) => {
-        //     console.log(`Sockets in room get_opponent_update ${match.match_str}:`, sockets.map(s => s.id));
-        // });
-        // console.log("Cur socket: " + socket.id);
+        
+        // when other person submits, and they pass testcases we want to redirect our user
+        let found_winner = false;
+        // console.log("match problem obj: ", match.problem);
+        if (match.first_player_max_testcases_passed == match.problem.test_cases.length || match.second_player_max_testcases_passed == match.problem.test_cases.length ) {
+            found_winner = true;
+        }
 
         // emit back with updated match-obj, everyone in room except sender use socket.to() else use io.to() we are sending opponents updates so dont emit to cur-person. 
         socket.to(match.match_str).emit("opponent_update", {match:{
@@ -180,8 +156,9 @@ io.on("connection", (socket) => {
             first_player_latest_testcases_passed: match.first_player_latest_testcases_passed,
             second_player_latest_testcases_passed: match.second_player_latest_testcases_passed,
             first_player_max_testcases_passed: match.first_player_max_testcases_passed,
-            second_player_max_testcases_passed: match.second_player_max_testcases_passed
-        }});
+            second_player_max_testcases_passed: match.second_player_max_testcases_passed,
+            winner:match.winner
+        }, found_winner:found_winner});
  
 
     });

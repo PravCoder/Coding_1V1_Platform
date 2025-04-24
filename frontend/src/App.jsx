@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import MatchPage from './pages/MatchPage';
+import MatchOutcomePage from './pages/MatchOutcomePage';
 
 
 
@@ -20,6 +21,8 @@ function App() {
 
           {/* for shone -> 6779d39282fe16a6817030f9 */}
           <Route path="/match/:match_id" element={<MatchPage></MatchPage>} /> 
+
+          <Route path="/match-outcome/:match_id" element={<MatchOutcomePage></MatchOutcomePage>} /> 
           
 
         </Routes>

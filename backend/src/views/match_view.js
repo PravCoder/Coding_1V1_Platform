@@ -145,7 +145,7 @@ example
 router.post("/submission", async (req, res) => {
     console.log("-----Submission Processing Testcases-----:");
 
-    const {sourceCode, languageId, match_id} = req.body;
+    const {sourceCode, languageId, match_id, userID} = req.body;
 
     try {
         const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
@@ -190,17 +190,27 @@ router.post("/submission", async (req, res) => {
             display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases + "\n" + "Input: " + first_failed_tc.input + "\n" + "Output: " + first_failed_tc.output + "\n"+ "Your output: " + first_failed_tc_user_output;
         }
 
-        // first confirm which player submission it is
-        // userID = "677073d50e110ae33b9fda6f";
-        // if (userID == match.first_player) {
-        //     console.log("First player")
-        //     match.first_player_submissions++;
-        //     io.to(match.match_str).emit("opponent_update",{match:match});
-        // }
-        // if (userID == match.second_player) {
-        //     match.second_player_submissions++;
-        //     io.to(match.match_str).emit("opponent_update",{match:match});
-        // }
+        // this is compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other
+        // person hits submit
+        if (userID == match.first_player) {
+            console.log("in submisison route, update my variables for first-player: ", userID);
+            match.first_player_submissions++;
+            match.first_player_latest_testcases_passed = num_testcases_passed;
+            if (num_testcases_passed > match.first_player_max_testcases_passed) {
+                match.first_player_max_testcases_passed = num_testcases_passed;
+            }
+            await match.save();
+
+        }
+        if (userID == match.second_player) {
+            console.log("in submisison route, update my variables for second-player: ", userID);
+            match.second_player_submissions++;
+            match.second_player_latest_testcases_passed = num_testcases_passed;
+            if (num_testcases_passed > match.second_player_max_testcases_passed) {
+                match.second_player_max_testcases_passed = num_testcases_passed;
+            }
+            await match.save();
+        }
 
         match.save();
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
@@ -210,7 +220,7 @@ router.post("/submission", async (req, res) => {
             first_failed_tc_user_output:first_failed_tc_user_output,
             display_output:display_output,
             num_testcases_passed:num_testcases_passed,
-            total_testcases:total_testcases
+            total_testcases:total_testcases, 
         });
 
     } catch (error) { 

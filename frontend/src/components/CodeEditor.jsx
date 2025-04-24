@@ -99,6 +99,9 @@ const CodeEditor = ({ match_id }) => {
   const [oppsMaxTestcasesPassed, setOppsMaxTestcasesPassed] = useState(0);
   const [totalTestcases, setTotalTestcases] = useState(0);
   // cur users variables
+  const [userSubmissions, setUserSubmissions] = useState(0);
+  const [userCurTestcasesPassed, setUserCurTestcasesPassed] = useState(0);
+  const [userMaxTestcasesPassed, setUserMaxTestcasesPassed] = useState(0);
   
   // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
   const socketRef = useRef(null); 
@@ -150,15 +153,38 @@ const CodeEditor = ({ match_id }) => {
         setOppsMaxTestcasesPassed(data.match.first_player_max_testcases_passed);
         console.log("set second-player updates in client");
       }
-
-      // setOpponentSubmissions(data.oppSubs);
     };
+    const handleUserMyUpdate = (data) => {
+      const userId = getCurrentUser();
+      const userIdStr = userId.toString();
+      const firstPlayerStr = data.match.first_player.toString();
+      const secondPlayerStr = data.match.second_player.toString();
+      
+      // Update my variables based on which player the current user is
+      if (userIdStr === firstPlayerStr) {
+          console.log("Updating first player (my) stats");
+          setUserSubmissions(data.match.first_player_submissions || 0);
+          setUserCurTestcasesPassed(data.match.first_player_latest_testcases_passed || 0);
+          setUserMaxTestcasesPassed(data.match.first_player_max_testcases_passed || 0);
+      } else if (userIdStr === secondPlayerStr) {
+          console.log("Updating second player (my) stats");
+          setUserSubmissions(data.match.second_player_submissions || 0);
+          setUserCurTestcasesPassed(data.match.second_player_latest_testcases_passed || 0);
+          setUserMaxTestcasesPassed(data.match.second_player_max_testcases_passed || 0);
+      } else {
+          console.error("User ID doesn't match either player");
+      }
+    }
+
     // when we get an emit from server do handleOpponentUpdate, it has updated match-obj
     socketRef.current.on("opponent_update", handleOpponentUpdate); 
+
+    socketRef.current.on("user_update", handleUserMyUpdate); 
 
     // cleanup function
     return () => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
+      socketRef.current.off("user_update", handleOpponentUpdate);
     };
   }, [match_id]);
 
@@ -192,13 +218,16 @@ const CodeEditor = ({ match_id }) => {
     console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
     try {
-      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language]});
+      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], userID:getCurrentUser()});
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
       setOutput(result.data.display_output.split("\n"));
       setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
       // setMyCurTestcases(result.data.num_testcases_passed); 
+      // setUserSubmissions(result.data.cur_user_submissions);
+      // setUserCurTestcasesPassed(result.data.cur_user_latest_testcases);
+      // setUserMaxTestcasesPassed(result.data.cur_user_max_testcases);
       
       const testcases_passed = result.data.num_testcases_passed;
       console.log("testcases_passed: " + testcases_passed);
@@ -207,8 +236,15 @@ const CodeEditor = ({ match_id }) => {
 
         const userId = getCurrentUser();
         console.log("myCurTestcases before emitting: " + " data: " + result.data.num_testcases_passed);
+
+        // Emit to get opponent updates
         socketRef.current.emit("get_opponent_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
           console.log("get_opponent_update callback:", response);
+        });
+        
+        // Emit to get my cur variables
+        socketRef.current.emit("get_my_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
+          console.log("get_my_update callback:", response);
         });
       }
 
@@ -332,6 +368,10 @@ const CodeEditor = ({ match_id }) => {
               <h2 className="text-lg">Opponent Submissions: {opponentSubmissions}</h2>
               <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
               <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
+              <br></br>
+              <h2>My Submissions: {userSubmissions}</h2>
+              <h2>My Latest Testcassed Passed: {userCurTestcasesPassed}/{totalTestcases}</h2>
+              <h2>My Max Testcases Passed: {userMaxTestcasesPassed}/{totalTestcases}</h2>
             </div>
           </div>
         )}

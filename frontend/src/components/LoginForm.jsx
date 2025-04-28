@@ -6,8 +6,8 @@ import { FcGoogle } from "react-icons/fc"; // Google icon
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"; // Eye icons
 
 const LoginForm = () => {
-  const [email, setEmail] = useState();
-  const [password, setPassword] = useState();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false); // password visibility eye state
   const [_, setCookies] = useCookies(["access_token"]);
   const navigate = useNavigate();
@@ -23,6 +23,11 @@ const LoginForm = () => {
     } catch (error) {
       console.error(error.response.data.message);
     }
+  };
+
+  // Handle Google login click
+  const handleGoogleLogin = () => {
+    window.location.href = "http://localhost:3001/auth/google";
   };
 
   return (
@@ -56,7 +61,7 @@ const LoginForm = () => {
             <button
               type="button"
               onClick={() => setShowPassword((prev) => !prev)}
-              className="absolute right-2 top-0 transform -translate-y-1/2 text-white focus:outline-none"
+              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-white focus:outline-none"
             >
               {showPassword ? <AiOutlineEyeInvisible /> : <AiOutlineEye />}
             </button>
@@ -70,8 +75,11 @@ const LoginForm = () => {
           </button>
         </form>
 
-        {/* Google Sign-In Button */}
-        <button className="flex items-center justify-center gap-2 border border-gray-400 text-white py-2 rounded-md hover:bg-gray-700 transition">
+        {/* Google Sign-In Button - Updated with onClick handler */}
+        <button 
+          onClick={handleGoogleLogin}
+          className="flex items-center justify-center gap-2 border border-gray-400 text-white py-2 rounded-md hover:bg-gray-700 transition"
+        >
           <FcGoogle size={20} /> Sign in with Google
         </button>
 

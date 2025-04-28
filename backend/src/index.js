@@ -1,47 +1,132 @@
 const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
-const axios = require("axios");
+const axios = require("axios")
+// Add these new imports
+const session = require("express-session")
+const passport = require("passport")
+const GoogleStrategy = require("passport-google-oauth20").Strategy
 // socket.io stuff
-const http = require("http");
-const { Server } = require("socket.io");  // getting class-server from socket.io
-// import view routes, as blankRouter, each api-view has its own router that handles endpoints, just seprating these endpoints with diff view files
-const userRouter = require("./views/user_view.js");
-const problemRouter = require("./views/problem_view.js");
-const matchRouter = require("./views/match_view.js");
+const http = require("http")
+const { Server } = require("socket.io")  // getting class-server from socket.io
+// import view routes, as blankRouter, each api-view has its own router that handles endpoints, just separating these endpoints with diff view files
+const userRouter = require("./views/user_view.js")
+const problemRouter = require("./views/problem_view.js")
+const matchRouter = require("./views/match_view.js")
 // models
-const ProblemModel = require("./models/Problem.js");
-const TestcaseModel = require("./models/Testcase.js");
-const MatchModel = require("./models/Match.js");
+const ProblemModel = require("./models/Problem.js")
+const TestcaseModel = require("./models/Testcase.js")
+const MatchModel = require("./models/Match.js")
+const UserModel = require("./models/User.js")  // Make sure this is imported
+
+// Import dotenv for environment variables
+const dotenv = require("dotenv")
+
+// Load environment variables from .env file
+dotenv.config()
 
 // create app-obj
 const app = express()
 app.use(express.json())
-app.use(cors())
+app.use(cors({
+  origin: "http://localhost:3000",
+  credentials: true  // Important: allow credentials
+}))
+
+// Add session middleware (before passport)
+app.use(session({
+  secret: "your_session_secret", // Change this to a real secret
+  resave: false,
+  saveUninitialized: false,
+  cookie: { secure: false } // Set to true in production with HTTPS
+}))
+
+// Initialize passport and session
+app.use(passport.initialize())
+app.use(passport.session())
+
+// Configure passport serialization (how to store user in session)
+passport.serializeUser((user, done) => {
+  done(null, user.id)
+})
+
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await UserModel.findById(id)
+    done(null, user)
+  } catch (err) {
+    done(err, null)
+  }
+})
+
+// Set up Google Strategy
+passport.use(new GoogleStrategy({
+    clientID: process.env.GOOGLE_CLIENT_ID, // Use environment variable
+    clientSecret: process.env.GOOGLE_CLIENT_SECRET, // Use environment variable
+    callbackURL: "http://localhost:3001/auth/google/callback"
+  },
+  async (accessToken, refreshToken, profile, done) => {
+    try {
+      // Check if user already exists by Google ID
+      let user = await UserModel.findOne({ googleId: profile.id })
+      
+      if (user) {
+        return done(null, user)
+      }
+      
+      // Check if user exists with the same email
+      const email = profile.emails && profile.emails[0].value
+      if (email) {
+        user = await UserModel.findOne({ email: email })
+        
+        if (user) {
+          // Link Google account to existing user
+          user.googleId = profile.id
+          await user.save()
+          return done(null, user)
+        }
+      }
+      
+      // Create a new user
+      const newUser = new UserModel({
+        username: profile.displayName || "Google User",
+        email: email || "no-email@example.com",
+        googleId: profile.id
+      })
+      
+      await newUser.save()
+      return done(null, newUser)
+    } catch (err) {
+      return done(err, null)
+    }
+  }
+))
 
 // include the backend user-api-routes with base-path of /
-app.use("/", userRouter);
-app.use("/problem", problemRouter);
-app.use("/match", matchRouter);
-
-
+app.use("/", userRouter)
+app.use("/problem", problemRouter)
+app.use("/match", matchRouter)
 
 // connection string with db-password db-name db-password
 mongoose.connect("mongodb+srv://pravachanpatra:5ct6fwHnaGaUJsDA@coding1v1platformcluste.kvwqv.mongodb.net/coding1v1platform?retryWrites=true&w=majority&appName=coding1V1platformcluster0")
 .then(() => console.log("Connected to MongoDB"))
-.catch(err => console.log("Error connecting to MongoDB:", err));
+.catch(err => console.log("Error connecting to MongoDB:", err))
 
-
+// The rest of your code remains unchanged
 // create http-server with express by passing in express-app-obj
 const server = http.createServer(app)
 
-// create new socket.io server instance pass ing http-server-obj, then configure cors settings
+// create new socket.io server instance passing http-server-obj, then configure cors settings
 const io = new Server(server, {
     cors: {
         origin:"http://localhost:3000", // define where frontend is, in deployment put your domain startup.com
         methods: ["GET", "POST"],
     }
 })
+// include the backend user-api-routes with base-path of /
+app.use("/", userRouter);
+app.use("/problem", problemRouter);
+app.use("/match", matchRouter);
 
 // module.exports = io; // for sockets in other files
 
@@ -158,7 +243,7 @@ io.on("connection", (socket) => {
             first_player_max_testcases_passed: match.first_player_max_testcases_passed,
             second_player_max_testcases_passed: match.second_player_max_testcases_passed,
             winner:match.winner
-        }, found_winner:found_winner});
+        }, found_winner:found_winner});//
  
 
     });
@@ -200,12 +285,9 @@ io.on("connection", (socket) => {
 });
 
 
+
 // frontend runs on: 3000
 // backend runs on: 3001
-// confirm server is running, this is the port where all requests are sent
 server.listen(3001, () => {
     console.log("server is running")
 })
-
-// Improved Socket.IO Server Implementation
-

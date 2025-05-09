@@ -375,10 +375,8 @@ const CodeEditor = ({ match_id }) => {
           <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
             <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
               <MatchTimer 
-                startTime={matchStartTime} 
-                onCountdownComplete={handleCountdownComplete}
-                isMatchStarted={isMatchStarted}
-                shouldRestart={shouldRestartTimer}
+                match_id={match_id}
+                socketRef={socketRef}
               />
               <h2 className="text-lg">Opponent Submissions: {opponentSubmissions}</h2>
               <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>

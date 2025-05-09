@@ -1,101 +1,83 @@
 import { useState, useEffect } from 'react';
 
-const MatchTimer = ({ startTime, onCountdownComplete, isMatchStarted }) => {
-  const [elapsedTime, setElapsedTime] = useState(0);
-  const [error, setError] = useState(null);
+const MatchTimer = ({ match_id, socketRef }) => {
+  const [timerState, setTimerState] = useState('waiting'); // waiting, countdown, running
   const [countdown, setCountdown] = useState(3);
-  const [isCountdownActive, setIsCountdownActive] = useState(false);
-  const [actualStartTime, setActualStartTime] = useState(() => {
-    const savedTime = localStorage.getItem('match_start_time');
-    return savedTime ? new Date(savedTime) : null;
-  });
+  const [displayTime, setDisplayTime] = useState('00:00:00');
 
-  // Reset timer when match starts
   useEffect(() => {
-    if (isMatchStarted && actualStartTime) {
-      // Clear existing timer
-      setElapsedTime(0);
-      setActualStartTime(null);
-      localStorage.removeItem('match_start_time');
-      setIsCountdownActive(true);
-    }
-  }, [isMatchStarted]);
+    if (!socketRef.current) return;
+    
+    // Join the match room when component mounts
+    const userId = localStorage.getItem('userId') || '';
+    socketRef.current.emit('join_match', { match_id, user_id: userId });
+    
+    // Also request current time
+    socketRef.current.emit('get_match_time', { match_id });
+    
+    // Listen for countdown start
+    socketRef.current.on('start_countdown', () => {
+      setTimerState('countdown');
+    });
+    
+    // Listen for countdown ticks
+    socketRef.current.on('countdown_tick', ({ count }) => {
+      setCountdown(count);
+    });
+    
+    // Listen for match start
+    socketRef.current.on('match_started', () => {
+      setTimerState('running');
+      setDisplayTime('00:00:00');
+    });
+    
+    // Listen for timer updates
+    socketRef.current.on('timer_update', ({ formattedTime }) => {
+      setDisplayTime(formattedTime);
+    });
+    
+    // Listen for timer sync (when rejoining or requesting current time)
+    socketRef.current.on('timer_sync', (data) => {
+      if (data.state) {
+        setTimerState(data.state);
+      }
+      
+      if (data.formattedTime) {
+        setDisplayTime(data.formattedTime);
+      }
+    });
+    
+    // Listen for match time sync responses
+    socketRef.current.on('match_time_sync', (data) => {
+      if (data.state) {
+        setTimerState(data.state);
+      }
+      
+      if (data.formattedTime) {
+        setDisplayTime(data.formattedTime);
+      }
+    });
+    
+    return () => {
+      socketRef.current.off('start_countdown');
+      socketRef.current.off('countdown_tick');
+      socketRef.current.off('match_started');
+      socketRef.current.off('timer_update');
+      socketRef.current.off('timer_sync');
+      socketRef.current.off('match_time_sync');
+    };
+  }, [match_id, socketRef]);
 
-  // Start countdown when match begins
-  useEffect(() => {
-    if (isMatchStarted && !isCountdownActive && !actualStartTime) {
-      setIsCountdownActive(true);
-    }
-  }, [isMatchStarted, isCountdownActive, actualStartTime]);
-
-  // Countdown effect
-  useEffect(() => {
-    if (!isCountdownActive) return;
-
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setIsCountdownActive(false);
-          const newStartTime = new Date();
-          setActualStartTime(newStartTime);
-          localStorage.setItem('match_start_time', newStartTime.toISOString());
-          if (onCountdownComplete) onCountdownComplete(newStartTime);
-          clearInterval(countdownInterval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(countdownInterval);
-  }, [isCountdownActive, onCountdownComplete]);
-
-  // Match timer effect
-  useEffect(() => {
-    if (!actualStartTime) return;
-
-    try {
-      const updateTimer = () => {
-        const now = new Date();
-        const diff = Math.floor((now - actualStartTime) / 1000); // Convert to seconds
-        setElapsedTime(diff);
-      };
-
-      // Update immediately
-      updateTimer();
-
-      // Then update every second
-      const interval = setInterval(updateTimer, 1000);
-
-      return () => clearInterval(interval);
-    } catch (err) {
-      setError("Error calculating time");
-      console.error(err);
-    }
-  }, [actualStartTime]);
-
-  const formatTime = (seconds) => {
-    const hours = Math.floor(seconds / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  if (!isMatchStarted && !actualStartTime) {
-    return null;
-  }
-
-  if (error) {
+  // Render based on timer state
+  if (timerState === 'waiting') {
     return (
       <div className="bg-[#2D2D2D] rounded-lg p-4 mb-4">
-        <h2 className="text-lg font-semibold text-white mb-2">Match Timer</h2>
-        <div className="text-red-500">{error}</div>
+        <h2 className="text-lg font-semibold text-white mb-2">Waiting for match to start...</h2>
       </div>
     );
   }
 
-  if (isCountdownActive) {
+  if (timerState === 'countdown') {
     return (
       <>
         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-md z-50" />
@@ -115,10 +97,10 @@ const MatchTimer = ({ startTime, onCountdownComplete, isMatchStarted }) => {
     <div className="bg-[#2D2D2D] rounded-lg p-4 mb-4">
       <h2 className="text-lg font-semibold text-white mb-2">Match Timer</h2>
       <div className="text-2xl font-bold text-green-500">
-        {formatTime(elapsedTime)}
+        {displayTime}
       </div>
     </div>
   );
 };
 
-export default MatchTimer; 
+export default MatchTimer;

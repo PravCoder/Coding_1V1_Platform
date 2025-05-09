@@ -33,8 +33,9 @@ const MatchSchema = new mongoose.Schema({
 
     // has match been started
     started: {type:Boolean, default:false },
+    
     // current time of match
-    time_stop_watch: {type: String, required:false, default: "0:0:00"},
+    time_stop_watch: {type: String, required:false, default: "00:0:00"},
     
     // used to connect sockets into a room, room id
     match_str: {type: String, required:false, default: ""},

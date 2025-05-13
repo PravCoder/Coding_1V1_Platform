@@ -285,6 +285,8 @@ const CodeEditor = ({ match_id }) => {
               <div className="m-6">
                 <div className="p-4 bg-[#1E1E1E] border-r border-[#333333]">
                   <h3 className="text-[#CCCCCC] font-semibold mb-2">EXAMPLES:</h3>
+                  {problem.examples}
+
                 </div>
               </div>         
             </div>

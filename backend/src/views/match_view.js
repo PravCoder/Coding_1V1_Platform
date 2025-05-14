@@ -109,6 +109,7 @@ router.post("/run-code", async (req, res) => {
         console.log("Received data:", { sourceCode, customInput, languageId });
 
         const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode, stdin: customInput, language_id: languageId,}, { headers: JUDGE0_HEADERS } );
+        
         console.log("API Response:", response.data);
         res.status(200).json({ message: "code ran successfully", stdout:response.data.stdout, stderr:response.data.stderr, time:response.data.time,memory:response.data.memory});
 
@@ -161,16 +162,20 @@ router.post("/submission", async (req, res) => {
         // NOTE: have to iterate all testcases and then send api-request for each testcase too many requests
         for (const cur_testcase of match.problem.test_cases) {
 
-            const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
-            // console.log("formatted-input: \n" + formatted_input);
-            console.log("Sending to Judge0:", { source_code: sourceCode, stdin: String(formatted_input), language_id: languageId, });
-            const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode,stdin: String(formatted_input), language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
-            // console.log("API Response Submit Code: " +response.data);
-            let user_output = response.data.stdout;
-            user_output = user_output.replace(/\n/g, "");
+            // const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
+
+            // for some reason there is a double slash in the testcase inputs when sending to judge0
+            const formatted_input = cur_testcase.input.replace(/\\n/g, '\n');
+            console.log("formatted-input: \n" + formatted_input);
+            console.log("Sending to Judge0:", { source_code: sourceCode, stdin: formatted_input, language_id: languageId, });
+            const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode,stdin: formatted_input, language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
+            console.log("API Response Submit Code:", JSON.stringify(response.data, null, 2));
+
+            let user_output = response.data.stdout.trim(); // trim any trailing /n because be default the judge0 compilers adds that when you print the last thing
+            // user_output = user_output.replace(/\n/g, "");
             // console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
             
-            // check current testcase
+            // check current testcase ouptut with user code output - IMPORTANT
             if (user_output === cur_testcase.output) { 
                 num_testcases_passed++;
                 // console.log("testcase #" + cur_testcase._id + " passed");
@@ -180,7 +185,9 @@ router.post("/submission", async (req, res) => {
                 submission_result = "failed";
                 // console.log("testcase #" + cur_testcase._id + " failed");
             }
-            console.log("--finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
+            console.log("user output: ", user_output);
+            console.log("testcase output: ", cur_testcase.output);
+            console.log("------------finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
         };
         let display_output = "";
@@ -276,23 +283,6 @@ const API = axios.create({
     baseURL: "https://emkc.org/api/v2/piston",
   });
   
-const executeCode = async (language, sourceCode, input) => {
-    const response = await API.post("/execute", {
-      language: language,
-      version: "3.10.0",
-      files: [
-        {
-          content: sourceCode,
-        },
-      ],
-      stdin: input, // Pass the custom input here
-    });
-    console.log("\nCOMPILED API")
-    console.log("input back: ", JSON.stringify(input, null, 2));
-    console.log("source_code : ", JSON.stringify(sourceCode, null, 2));
-    console.log("response back: ", JSON.stringify(response.data, null, 2));
-    return response.data;
-};
   
 
 

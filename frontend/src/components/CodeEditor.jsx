@@ -31,7 +31,7 @@ Code: nums = list(map(int, input().split()))
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
   const navigate = useNavigate();
-  const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
+  const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result[0], result[1] )");
   const [customInput, setCustomInput] = useState("");
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});

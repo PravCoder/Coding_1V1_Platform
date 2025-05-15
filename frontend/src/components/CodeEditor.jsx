@@ -197,13 +197,13 @@ const CodeEditor = ({ match_id }) => {
 
 
     // only set the startingCode if it hasnt been set yet
-    if (problem?.startingCode && languageOptions[language] && !sourceCode) {
-      const languageId = languageOptions[language];
-      const codeTemplate = problem.startingCode[languageId];
-      if (codeTemplate) {
-        setSourceCode(codeTemplate);
-      }
-    }
+    // if (problem?.startingCode && languageOptions[language] && !sourceCode) {
+    //   const languageId = languageOptions[language];
+    //   const codeTemplate = problem.startingCode[languageId];
+    //   if (codeTemplate) {
+    //     setSourceCode(codeTemplate);
+    //   }
+    // }
   
 
     // cleanup function
@@ -211,7 +211,32 @@ const CodeEditor = ({ match_id }) => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
       socketRef.current.off("user_update", handleOpponentUpdate);
     };
-  }, [match_id, problem, language, languageOptions]);
+  }, [match_id]);
+
+
+  const handleLanguageChange = (e) => {
+    const newLanguage = e.target.value;
+    setLanguage(newLanguage);
+    // When language changes, load the corresponding template
+    if (problem?.startingCode && languageOptions[newLanguage]) {
+      const languageId = languageOptions[newLanguage];
+      const codeTemplate = problem.startingCode[languageId];
+      if (codeTemplate) {
+        setSourceCode(codeTemplate);
+      }
+    }
+  };
+
+  // Separate effect to set initial code when problem first loads
+  useEffect(() => {
+    if (problem?.startingCode && languageOptions[language]) {
+      const languageId = languageOptions[language];
+      const codeTemplate = problem.startingCode[languageId];
+      if (codeTemplate) {
+        setSourceCode(codeTemplate);
+      }
+    }
+  }, [problem]); // Only when problem changes, not when language changes
 
 
 
@@ -345,8 +370,8 @@ const CodeEditor = ({ match_id }) => {
             <label className="text-sm font-semibold">Language: </label>
             <select
               value={language}
-              onChange={(e) => setLanguage(e.target.value)}
               className="border p-3 rounded bg-transparent"
+              onChange={handleLanguageChange} // usese the custom handler instead of setLanguage
               disabled={isCountdownActive}
             >
               {Object.keys(languageOptions).map((lang) => (

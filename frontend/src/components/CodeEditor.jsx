@@ -34,7 +34,6 @@ const CodeEditor = ({ match_id }) => {
   const [match, setMatch] = useState({});
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});
-  console.log("stuff: ", problem);
   const [sourceCode, setSourceCode] = useState("");
   const [customInput, setCustomInput] = useState("");
   const [showOpponentBox, setShowOpponentBox] = useState(true);
@@ -125,7 +124,7 @@ const CodeEditor = ({ match_id }) => {
       console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
       setMatch(response.data.match)
-      console.log("match fetched: ", response.data.match);
+      // console.log("match fetched: ", response.data.match);
       setTotalTestcases(response.data.problem.test_cases.length);
       console.log(response.data.problem);
     } catch (error) {
@@ -196,8 +195,14 @@ const CodeEditor = ({ match_id }) => {
 
     socketRef.current.on("user_update", handleUserMyUpdate); 
 
-    if (problem && problem.startingCode && languageOptions[language]) {
-      setSourceCode(problem.startingCode[languageOptions[language]] || "Code template not found");
+
+    // only set the startingCode if it hasnt been set yet
+    if (problem?.startingCode && languageOptions[language] && !sourceCode) {
+      const languageId = languageOptions[language];
+      const codeTemplate = problem.startingCode[languageId];
+      if (codeTemplate) {
+        setSourceCode(codeTemplate);
+      }
     }
   
 

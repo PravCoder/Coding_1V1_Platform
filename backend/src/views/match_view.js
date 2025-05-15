@@ -85,7 +85,7 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
         return res.status(404).json({ message: "Match not found" });
         }
 
-        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.test_cases.length });
+        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.test_cases.length, match:match });
 
     } catch (error) {
         console.error(error);
@@ -148,8 +148,14 @@ router.post("/submission", async (req, res) => {
 
     const {sourceCode, languageId, match_id, userID} = req.body;
 
+    
+
     try {
         const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
+        
+        // pass in the inputCode (which gets the input) for this problem along with the users solution
+        // when they submit its the inputCode + sourceCode they wrote
+        let full_source_code = `${match.problem.inputCode[languageId]}\n${sourceCode}`;   // get the corresponing inputCode for problem+language, add the sourceCode they submitted
 
         // some variables for the result of the submission
         let num_testcases_passed = 0;
@@ -167,8 +173,8 @@ router.post("/submission", async (req, res) => {
             // for some reason there is a double slash in the testcase inputs when sending to judge0
             const formatted_input = cur_testcase.input.replace(/\\n/g, '\n');
             console.log("formatted-input: \n" + formatted_input);
-            console.log("Sending to Judge0:", { source_code: sourceCode, stdin: formatted_input, language_id: languageId, });
-            const response = await axios.post(JUDGE0_API_URL, {source_code: sourceCode,stdin: formatted_input, language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
+            console.log("Sending to Judge0:", { source_code: full_source_code, stdin: formatted_input, language_id: languageId, });
+            const response = await axios.post(JUDGE0_API_URL, {source_code: full_source_code, stdin: formatted_input, language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
             console.log("API Response Submit Code:", JSON.stringify(response.data, null, 2));
 
             let user_output = response.data.stdout.trim(); // trim any trailing /n because be default the judge0 compilers adds that when you print the last thing
@@ -263,26 +269,6 @@ const JUDGE0_HEADERS = {
 };
 
 
-
-
-
-function format_input(input) {
-    const parsedInput = JSON.parse(input);
-    return parsedInput
-      .map((item) => {
-        if (Array.isArray(item)) { // if input is an array turn into 1 2 3 4
-          return item.join(" ");
-        }
-        return item.toString();
-      })
-      .join("\n"); 
-}
-
-// Executes code of custom input that user put for users own testing purposes testing
-const API = axios.create({
-    baseURL: "https://emkc.org/api/v2/piston",
-  });
-  
   
 
 

@@ -31,16 +31,19 @@ Code: nums = list(map(int, input().split()))
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
   const navigate = useNavigate();
-  const [sourceCode, setSourceCode] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result[0], result[1] )");
-  const [customInput, setCustomInput] = useState("");
+  const [match, setMatch] = useState({});
   const [language, setLanguage] = useState("python");
   const [problem, setProblem] = useState({});
+  console.log("stuff: ", problem);
+  const [sourceCode, setSourceCode] = useState("");
+  const [customInput, setCustomInput] = useState("");
   const [showOpponentBox, setShowOpponentBox] = useState(true);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [isMatchStarted, setIsMatchStarted] = useState(() => {
     return !!localStorage.getItem('match_start_time');
   });
   const [shouldRestartTimer, setShouldRestartTimer] = useState(false);
+  
   
   // Initialize matchStartTime from localStorage or create new one
   const [matchStartTime, setMatchStartTime] = useState(() => {
@@ -121,6 +124,8 @@ const CodeEditor = ({ match_id }) => {
       const response = await axios.get(`http://localhost:3001/match/get-match-problem/${match_id}`);
       console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
+      setMatch(response.data.match)
+      console.log("match fetched: ", response.data.match);
       setTotalTestcases(response.data.problem.test_cases.length);
       console.log(response.data.problem);
     } catch (error) {
@@ -191,12 +196,17 @@ const CodeEditor = ({ match_id }) => {
 
     socketRef.current.on("user_update", handleUserMyUpdate); 
 
+    if (problem && problem.startingCode && languageOptions[language]) {
+      setSourceCode(problem.startingCode[languageOptions[language]] || "Code template not found");
+    }
+  
+
     // cleanup function
     return () => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
       socketRef.current.off("user_update", handleOpponentUpdate);
     };
-  }, [match_id]);
+  }, [match_id, problem, language, languageOptions]);
 
 
 

@@ -38,6 +38,7 @@ const CodeEditor = ({ match_id }) => {
   const [customInput, setCustomInput] = useState("");
   const [showOpponentBox, setShowOpponentBox] = useState(true);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
+  const [outputInfo, setOutputInfo] = useState({});
   const [isMatchStarted, setIsMatchStarted] = useState(() => {
     return !!localStorage.getItem('match_start_time');
   });
@@ -271,6 +272,8 @@ const CodeEditor = ({ match_id }) => {
       const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], userID:getCurrentUser()});
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data + " out: " + output);
+      setOutputInfo(result.data.output_information);
+
       setOutput(result.data.display_output.split("\n"));
       setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
@@ -310,7 +313,7 @@ const CodeEditor = ({ match_id }) => {
   };
 
 
-
+  console.log("outputinfo: ", outputInfo);
   return (
     <div className={`h-screen bg-[#1E1E1E] text-white ${isCountdownActive ? 'pointer-events-none' : ''}`}>
       <div className="flex h-full">
@@ -399,6 +402,27 @@ const CodeEditor = ({ match_id }) => {
             />
             <div className="mt-4">
               <h2 className="font-bold text-lg">Output:</h2>
+              {outputInfo.status === 11 && (
+                <div className="bg-red-100 text-red-700 p-3 rounded">
+                  <h4>Runtime Error LIL BRO</h4>
+                  <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
+                  <h4>First Failed Testcase</h4>
+                  <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
+                  <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
+                  <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                </div>
+              )}
+
+              {outputInfo.status === 3 && (
+                <div className="bg-green-100 text-green-800 p-3 rounded">
+                  🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
+                  <h4>First Failed Testcase</h4>
+                  <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
+                  <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
+                  <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                </div>
+              )}
+
               <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
                 Time: {time} ms, Memory: {memory} kb
                 {Array.isArray(output) ? (

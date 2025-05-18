@@ -163,9 +163,12 @@ router.post("/submission", async (req, res) => {
         let first_failed_tc = null;
         let first_failed_tc_user_output = null;
         let submission_result = "passed";
+        let display_output = "";
         // iterate problem.testcases
         // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output, 
         // NOTE: have to iterate all testcases and then send api-request for each testcase too many requests
+        let output_information = {};
+
         for (const cur_testcase of match.problem.test_cases) {
 
             // const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
@@ -177,6 +180,41 @@ router.post("/submission", async (req, res) => {
             const response = await axios.post(JUDGE0_API_URL, {source_code: full_source_code, stdin: formatted_input, language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
             console.log("API Response Submit Code:", JSON.stringify(response.data, null, 2));
 
+
+            // for every testcase set these variables
+            output_information.status = response.data.status.id;
+            output_information.stdout = response.data.stdout;
+            output_information.stderr = response.data.stderr;
+            output_information.message = response.data.message;
+            output_information.time = response.data.time;
+            output_information.memory = response.data.memory;
+            output_information.compile_output = response.data.compile_output;
+            output_information.total_testcases = total_testcases;
+
+            // output_information.first_failed_tc_inp = cur_testcase.input;
+            // output_information.first_failed_tc_output = cur_testcase.output;
+            // output_information.first_failed_tc_user_output = response.data.stdout;
+
+            console.log("response.data.status.id", response.data.status.id);
+            if (output_information.status == 11) {   // runtime error when submitting code
+                console.log("RUNTIME ERROR");
+                let output_error_info = formatSubmissionJudge0Error(response.data);   // a string with all of the info when there is a error
+                // console.log("output_error_info ", output_error_info);
+
+                output_information.first_failed_tc_inp = cur_testcase.input;  // if runtime error set first testcase failed variables
+                output_information.first_failed_tc_output = cur_testcase.output;
+                output_information.first_failed_tc_user_output = response.data.stdout;
+                
+                return res.status(201).json({
+                    message: submission_result, match: match,
+                    num_testcases_passed:num_testcases_passed, 
+                    total_testcases:total_testcases,
+                    display_output:output_error_info,
+                    output_information:output_information,
+                    found_winner: false
+                });
+            }
+
             let user_output = response.data.stdout.trim(); // trim any trailing /n because be default the judge0 compilers adds that when you print the last thing
             // user_output = user_output.replace(/\n/g, "");
             // console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
@@ -186,8 +224,9 @@ router.post("/submission", async (req, res) => {
                 num_testcases_passed++;
                 // console.log("testcase #" + cur_testcase._id + " passed");
             } else {
-                first_failed_tc = cur_testcase;
-                first_failed_tc_user_output = user_output;
+                output_information.first_failed_tc_inp = cur_testcase.input;  // if testcase failed update, first testcase failed variables inside testcase loop
+                output_information.first_failed_tc_output = cur_testcase.output;
+                output_information.first_failed_tc_user_output = response.data.stdout;
                 submission_result = "failed";
                 // console.log("testcase #" + cur_testcase._id + " failed");
             }
@@ -196,12 +235,17 @@ router.post("/submission", async (req, res) => {
             console.log("------------finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
         };
-        let display_output = "";
+
+        
         if (submission_result === "passed") {
             display_output = "PASSED! Testcases: " + num_testcases_passed +"/" +  total_testcases;
         } else {
-            display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases + "\n" + "Input: " + first_failed_tc.input + "\n" + "Output: " + first_failed_tc.output + "\n"+ "Your output: " + first_failed_tc_user_output;
+            console.log("last thing printed");
+            display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases ;
         }
+        output_information.num_testcases_passed = num_testcases_passed;
+
+        console.log("last thing printe2");
 
         // this is compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other
         // person hits submit
@@ -236,16 +280,15 @@ router.post("/submission", async (req, res) => {
         }
         await match.save();
 
+        console.log("output_information: ",output_information);
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({
-            message: submission_result, match: match, num_testcases_passed:num_testcases_passed, total_testcases:total_testcases,
-            first_failed_tc:first_failed_tc,
-            first_failed_tc_user_output:first_failed_tc_user_output,
+            message: submission_result, match: match,
+            num_testcases_passed:num_testcases_passed, 
+            total_testcases:total_testcases,
             display_output:display_output,
-            num_testcases_passed:num_testcases_passed,
-            total_testcases:total_testcases, 
-            found_winner: found_winner
-
+            output_information:output_information,
+            found_winner: false
         });
 
     } catch (error) { 
@@ -267,6 +310,38 @@ const JUDGE0_HEADERS = {
   'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,
   'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
 };
+
+function formatSubmissionJudge0Error(res) {
+    const {
+      status,
+      message,
+      stderr,
+      compile_output,
+      time,
+      memory,
+      token,
+    } = res;
+  
+    // Pick the most useful error text that exists
+    const errorText =
+      stderr?.trim() ||
+      compile_output?.trim() ||
+      message?.trim() ||
+      "Unknown error";
+  
+    return [
+      "❌  **Submission Error**",
+      `Status : ${status?.id} – ${status?.description}`,
+      `Time   : ${time ?? "–"} sec`,
+      `Memory : ${memory ?? "–"} KB`,
+      "",
+      "Details:",
+      errorText,
+      "",
+      `(token: ${token})`,
+    ].join("\n");
+  }
+  
 
 
   

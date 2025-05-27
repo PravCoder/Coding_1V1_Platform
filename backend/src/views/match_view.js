@@ -204,6 +204,14 @@ router.post("/submission", async (req, res) => {
                 output_information.first_failed_tc_inp = cur_testcase.input;  // if runtime error set first testcase failed variables
                 output_information.first_failed_tc_output = cur_testcase.output;
                 output_information.first_failed_tc_user_output = response.data.stdout;
+
+                if (userID == match.first_player) {  // if first player submitted and there was a runtime error still update their submissions
+                    match.first_player_submissions++;
+                }
+                if (userID == match.second_player) {  // if second player submitted and there was a runtime error still update their submissions
+                    match.second_player_submissions++;
+                }
+                match.save();
                 
                 return res.status(201).json({
                     message: submission_result, match: match,

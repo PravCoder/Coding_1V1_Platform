@@ -141,7 +141,7 @@ const CodeEditor = ({ match_id }) => {
       socketRef.current = io("http://localhost:3001");
       console.log("creating new socket connection client:", socketRef.current.id);
     }
-    socketRef.current.emit("rejoin_match", { match_id }); // if their socket cahnges rejoin-match
+    socketRef.current.emit("rejoin_match", { match_id }); // if their socket changes rejoin-match
 
     const handleOpponentUpdate = (data) => {
       console.log("Received opponent_update. Socket ID:", socketRef.current.id);
@@ -162,7 +162,8 @@ const CodeEditor = ({ match_id }) => {
         console.log("set second-player updates in client");
       }
 
-      // other-user presses submit and they pass all testcases, we should redirect ourselves to 
+      // other-user presses submit and they pass all testcases, we should redirect ourselves to
+      console.log("found winner: ", data.found_winner); 
       if (data.found_winner == true) {
         console.log("redirect to amtch outcome because other person won")
         navigate(`/match-outcome/${match_id}`);
@@ -428,7 +429,7 @@ const CodeEditor = ({ match_id }) => {
                 {Array.isArray(output) ? (
                   output.map((line, index) => <div key={index}>{line}</div>)
                 ) : (
-                  <pre>{output}</pre>
+                  <pre>{}</pre>
                 )}
               </div>
               <pre className="p-4 rounded whitespace-pre-wrap">

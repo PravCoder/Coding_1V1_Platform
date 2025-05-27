@@ -288,7 +288,7 @@ router.post("/submission", async (req, res) => {
             total_testcases:total_testcases,
             display_output:display_output,
             output_information:output_information,
-            found_winner: false
+            found_winner: found_winner
         });
 
     } catch (error) { 

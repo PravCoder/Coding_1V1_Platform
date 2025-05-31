@@ -3,31 +3,27 @@ const mongoose = require("mongoose");
 const ProblemSchema = new mongoose.Schema({
     title: {type:String, required:true},
     description: {type:String, required:true},
-    examples: {type:String, required:false},
+    examples: {type:String, required:false},   // or just iterate a element of testcases and display it
+    difficulty: {type:String, required:true},  // "easy","medium","hard"
 
-    // "easy","medium","hard"
-    difficulty: {type:String, required:true},
+    // name of the problem function "twoSum"
+    function_name: { type: String, required: false },
 
-    // store list of testcase-objs, displaying total_testcases this through /submission endpoint counting it and passing too client. 
-    test_cases: [{type: mongoose.Schema.Types.ObjectId, ref: "Testcase" }],
+    // array of input parameters of the problem
+    parameters: [{
+        name: { type: String, required: false },   // name of input-param displayed on screen, "nums"
+        type: { type: String, required: true },    //  type of input-param, "number[]", "int"
+    }],
 
-    // pre-loaded template code for each problem that the user sees and edits. 
-    startingCode: {
-        63: String,      // javascript
-        71: String,     // python
-        54: String,    // c++
-        62: String    // java
-    },
+    // the type of the return object that should be returned by user
+    return_type: { type: String, required: true },
 
-    // this is the a string that gets added to the pre-loaded code template (for submission) that is the getting the input of the problem
-    // so the user doesn't have to write code to extract the input like leetcode, they are just given the input objects and write their solution.
-    // each language has its own inputCode for getting input.
-    inputCode: {
-        63: String,      // javascript
-        71: String,     // python
-        54: String,    // c++
-        62: String    // java
-    },
+    // array of testcases where each element has a input and output
+    testcases: [{
+        input: { type: mongoose.Schema.Types.Mixed, required: true },  // actual data structures not strings
+        output: { type: mongoose.Schema.Types.Mixed, required: true },
+    }]
+
 })
 
 const ProblemModel = mongoose.model("Problem", ProblemSchema);

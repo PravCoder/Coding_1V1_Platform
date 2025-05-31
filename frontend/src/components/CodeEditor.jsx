@@ -272,7 +272,7 @@ const CodeEditor = ({ match_id }) => {
     try {
       const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], userID:getCurrentUser()});
       console.log("match-id: " + match_id);
-      console.log("submission results: " + result.data + " out: " + output);
+      console.log("submission results: " + result.data.fir + " out: " + output);
       setOutputInfo(result.data.output_information);
 
       setOutput(result.data.display_output.split("\n"));

@@ -20,7 +20,7 @@ const ProblemSchema = new mongoose.Schema({
 
     // array of testcases where each element has a input and output
     testcases: [{
-        input: { type: mongoose.Schema.Types.Mixed, required: true },  // actual data structures not strings
+        input: { type: mongoose.Schema.Types.Mixed, required: true },  // actual data structures not strings, arrays, numbers
         output: { type: mongoose.Schema.Types.Mixed, required: true },
     }]
 

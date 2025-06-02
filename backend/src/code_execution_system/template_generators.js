@@ -19,7 +19,7 @@ const templateGenerators = {
             `def ${function_name}(${param_list}):
                 """
                 ${type_hints}
-                :rtype: ${py_return_type}
+                :rtype: ${py_rturn_type}
                 """
                 pass
             `;
@@ -69,3 +69,5 @@ const templateGenerators = {
     }
 
 }
+
+module.exports = templateGenerators;

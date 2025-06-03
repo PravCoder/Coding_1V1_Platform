@@ -15,6 +15,7 @@ app.use(cors())
 const router = express.Router();
 
 /* 
+*TBD: update this for new problem model
 This route is run when create problem form is submitted
 To create problem-obj we need to create test-case-objs
 Postman: http://localhost:3001/problem/create-problem:
@@ -45,6 +46,7 @@ router.post("/create-problem", async (req, res) => {
 
 
 /* 
+*TBD: update this for new problem model
 Problem-id is given in url
 Input of testcase-obj is a list where each element is a input
 Output of testcase-obj is list where ecah element is a output

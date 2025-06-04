@@ -1,6 +1,6 @@
 const typeSystem = require('./data_type_system');
 
-// generates the user code template what they see based on different languages dyanmically
+// generates the *user code* template what they see based on different languages dyanmically
 const templateGenerators = {
     
     python: (problem) => {  // given problem-obj
@@ -11,7 +11,7 @@ const templateGenerators = {
         // iterate all paramteres get the sctual type of the paramter in this language using typeSystem
         const type_hints = parameters.map(p => `:type ${p.name}: ${typeSystem[p.type]?.python || p.type}`).join('\n    ');
         // get return type of python given general return type of problem
-        const py_return_type = typeSystem[return_type]?.python || return_type
+        const py_return_type = typeSystem[return_type]?.python || return_type;
 
         // dynamically create a template of the problem code that the user sees, based on the given problems name and paramters their types
         // also based on the return type of problem of this language
@@ -19,7 +19,7 @@ const templateGenerators = {
             `def ${function_name}(${param_list}):
                 """
                 ${type_hints}
-                :rtype: ${py_rturn_type}
+                :rtype: ${py_return_type}
                 """
                 pass
             `;

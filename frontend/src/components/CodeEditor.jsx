@@ -129,7 +129,7 @@ const CodeEditor = ({ match_id }) => {
       setTotalTestcases(response.data.problem.test_cases.length);
       console.log(response.data.problem);
     } catch (error) {
-      console.error(error.response.data.message);  
+      // console.error(error.response.data.message);  
     }
   };
 

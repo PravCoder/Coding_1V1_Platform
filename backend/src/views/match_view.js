@@ -48,10 +48,10 @@ router.post("/create-match", async (req, res) => {
         const first_user = await UserModel.findById(first_player_id);
         const second_user = await UserModel.findById(second_player_id);
 
-        console.log("flag1");
+        console.log("CALLED CREATE MATCH");
 
-        console.log("firstp: " + first_player_id);
-        console.log("secondp: " + second_player_id);
+        // console.log("firstp: " + first_player_id);
+        // console.log("secondp: " + second_player_id);
         const new_match = new MatchModel({
             first_player:first_player_id,
             second_player: second_player_id,
@@ -59,7 +59,7 @@ router.post("/create-match", async (req, res) => {
             started:true,
             match_str:match_str
         });
-        console.log("flag2");
+        // console.log("flag2");
 
 
         await new_match.save();
@@ -70,7 +70,7 @@ router.post("/create-match", async (req, res) => {
         second_user.save();
         // await first_user.save();
         // await second_user.save();
-        console.log("flag3");
+        // console.log("flag3");
 
         res.status(201).json({message: "match successfully created", match: new_match});
     } catch (error) {

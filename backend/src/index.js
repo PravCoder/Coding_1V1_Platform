@@ -24,13 +24,10 @@ app.use("/", userRouter);
 app.use("/problem", problemRouter);
 app.use("/match", matchRouter);
 
-
-
 // connection string with db-password db-name db-password
 mongoose.connect("mongodb+srv://pravachanpatra:5ct6fwHnaGaUJsDA@coding1v1platformcluste.kvwqv.mongodb.net/coding1v1platform?retryWrites=true&w=majority&appName=coding1V1platformcluster0")
 .then(() => console.log("Connected to MongoDB"))
 .catch(err => console.log("Error connecting to MongoDB:", err));
-
 
 // create http-server with express by passing in express-app-obj
 const server = http.createServer(app)
@@ -112,12 +109,10 @@ io.on("connection", (socket) => {
             })
                 .then(async response => {
                     console.log("match created successfuly:", response.data);
-                    // notifies players, by getting the socket using players socket.id and emits to event match-found with data of the other player
-                    // io.to(player1.socket_id).emit("match_found", { opponent: player2.player_id, match_str:match_str });
-                    // io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
                     
                     // get all sockets in match-str room and emit match-found event along with some informational data. 
                     console.log("THE NEW MATCH ID: ", response.data.match._id);
+                    // emit match-found event to all sockets in match-str room
                     io.to(match_str).emit("match_found", { 
                         opponent1: player1.player_id, 
                         opponent2: player2.player_id, 
@@ -125,8 +120,9 @@ io.on("connection", (socket) => {
                         new_match_id: response.data.match._id  // for url redirect to match play page
                     });
                     
-                    // Timer Sync Stuff Below
-                    // remember we added this socket to match-str room above which is like connecting-matching two players to a match, now we do this
+                    // TIMER SYNC STUFF BELOW
+                    const new_match_id = response.data.match._id; // ✅ Define the variable properly
+                    
                     // if we dont have this match-timer in our in-memory store yet, init it
                     if (!matches_timer_data[new_match_id]) {
                       matches_timer_data[new_match_id] = {
@@ -135,74 +131,80 @@ io.on("connection", (socket) => {
                         startTime: null
                       };
                     }
-                    // check if we correcly added the sockets-players into match-str-room
-                    const num_player_in_room = await io.in(match.match_str).fetchSockets().then(sockets => sockets.length);
+                    
+                    // check if we correctly added the sockets-players into match-str-room
+                    const num_player_in_room = await io.in(match_str).fetchSockets().then(sockets => sockets.length); // ✅ Use match_str
 
                     // if there are 2 players in the room and the match-timer-obj state is waiting, start the match
-                    if (num_player_in_room === 2 && matches_timer_data[match_id].state === "waiting") {
+                    if (num_player_in_room === 2 && matches_timer_data[new_match_id].state === "waiting") { // ✅ Use new_match_id
                       // start countdown to match
-                      matches_timer_data[match_id].state = "countdown";
+                      matches_timer_data[new_match_id].state = "countdown"; // ✅ Use new_match_id
                       // emit to all sockets in match-str room to start the countdown
-                      io.to(match.match_str).emit('start_countdown');
+                      io.to(match_str).emit('start_countdown'); // ✅ Use match_str
 
                       // START THE COUNTDOWN
                       let count = 3;
                       // set-interval-function that is called every 1000 msc, countdownInterval()
                       const countdownInterval = setInterval(async () => {
-                        io.to(match.match_str).emit('countdown_tick', { count });
+                        io.to(match_str).emit('countdown_tick', { count }); // ✅ Use match_str
                         count--;
                         
                         if (count < 0) {
                           clearInterval(countdownInterval);
                           // Start the match timer
                           const startTime = Date.now();
-                          matches_timer_data[match_id].state = 'running';
-                          matches_timer_data[match_id].startTime = startTime;
+                          matches_timer_data[new_match_id].state = 'running'; // ✅ Use new_match_id
+                          matches_timer_data[new_match_id].startTime = startTime; // ✅ Use new_match_id
                           
                           // Update the match in the database
-                          await MatchModel.findByIdAndUpdate(match_id, { 
+                          await MatchModel.findByIdAndUpdate(new_match_id, { // ✅ Use new_match_id
                             started: true,
                             time_stop_watch: "00:00:00" 
                           });
                           
-                          io.to(match.match_str).emit('match_started', { startTime });
+                          io.to(match_str).emit('match_started', { startTime }); // ✅ Use match_str
                           
                           // Start a timer interval to update all clients
                           const timerInterval = setInterval(async () => {
-                            if (!new_match_id[match_id]) {
+                            if (!matches_timer_data[new_match_id]) {
                               clearInterval(timerInterval);
                               return;
                             }
                             const now = Date.now();
-                            const elapsedSeconds = Math.floor((now - new_match_id[match_id].startTime) / 1000);
+                            const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000); // ✅ Fixed this line
+                            
                             // Format time as HH:MM:SS
                             const hours = Math.floor(elapsedSeconds / 3600);
                             const minutes = Math.floor((elapsedSeconds % 3600) / 60);
                             const seconds = elapsedSeconds % 60;
                             const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                            
                             // Update in-memory and database every 5 seconds (to reduce DB writes)
                             if (elapsedSeconds % 5 === 0) {
                               try {
-                                await MatchModel.findByIdAndUpdate(match_id, { time_stop_watch: formattedTime });
+                                await MatchModel.findByIdAndUpdate(new_match_id, { time_stop_watch: formattedTime }); // ✅ Use new_match_id
                               } catch (err) {
                                 console.error("Error updating match time in database:", err);
                               }
                             }
+                            
                             // Broadcast to all clients every second
-                            io.to(match.match_str).emit('timer_update', { 
+                            io.to(match_str).emit('timer_update', { // ✅ Use match_str
                               elapsedSeconds, 
                               formattedTime 
                             });
                             
                           }, 1000);
                           
-                          new_match_id[match_id].timerInterval = timerInterval;
+                          matches_timer_data[new_match_id].timerInterval = timerInterval; // ✅ Use new_match_id
                         }
                       }, 1000);
-                      // if match is already runing
-                    } else if (matches_timer_data[match_id].state === 'running') { 
+                      
+                    // if match is already running
+                    } else if (matches_timer_data[new_match_id].state === 'running') { // ✅ Use new_match_id
                       const now = Date.now();
-                      const elapsedSeconds = Math.floor((now - matches[match_id].startTime) / 1000);
+                      const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000); // ✅ Fixed this line
+                      
                       // Format time
                       const hours = Math.floor(elapsedSeconds / 3600);
                       const minutes = Math.floor((elapsedSeconds % 3600) / 60);
@@ -218,10 +220,8 @@ io.on("connection", (socket) => {
                     }
                 })
                 .catch(error => {
-                    console.error("unable to create match", error.message);
+                    console.error("unable to create match in index.js:", error.message);
                 });
-
-        
         }
         console.log("updated queue: " , player_queue.length);
     });
@@ -231,14 +231,10 @@ io.on("connection", (socket) => {
         console.log("get_opponent_update_server id: " + data.match_id);
 
         userId = data.userId;  // get this users id given from client
-        // testcases_passed = data.testcases_passed;
-        // console.log("mytestcases we got correct: " + testcases_passed);
         const match = await MatchModel.findById(data.match_id).populate("problem"); // this query is slowing down application for every submission, so use caching
-        
         
         // when other person submits, and they pass testcases we want to redirect our user
         let found_winner = false;
-        // console.log("match problem obj: ", match.problem);
         if (match.first_player_max_testcases_passed == match.problem.test_cases.length || match.second_player_max_testcases_passed == match.problem.test_cases.length ) {
             found_winner = true;
         }
@@ -255,8 +251,6 @@ io.on("connection", (socket) => {
             second_player_max_testcases_passed: match.second_player_max_testcases_passed,
             winner:match.winner
         }, found_winner:found_winner});
- 
-
     });
 
     socket.on("get_my_update", async (data) => {
@@ -275,7 +269,7 @@ io.on("connection", (socket) => {
         }});
     });
 
-    // get latest mmatch time used when player first loads the match
+    // get latest match time used when player first loads the match
     socket.on("get_match_time", async ({ match_id }) => {
       try {
         const match = await MatchModel.findById(match_id);
@@ -309,8 +303,6 @@ io.on("connection", (socket) => {
         console.error("Error in get_match_time handler:", error);
       }
     });
-    
-
 
     // To rejoin socket to match-str-room. Handle reconnection when a player refreshes or rejoins
     socket.on("rejoin_match", async (data) => {
@@ -322,8 +314,6 @@ io.on("connection", (socket) => {
         if (!active_matches.has(match.match_id)) {
             active_matches.set(match.match_id, new Set());
         }
-
-        // console.log(`Socket ${socket.id} rejoined room ${match.match_str}`);
 
       // TIMER SYNC STUFF
       // Check if match is already running in our in-memory store
@@ -344,7 +334,6 @@ io.on("connection", (socket) => {
           formattedTime 
         });
       } 
-
 
       // If match exists in DB but not in memory (server restarted), reconstruct from DB
       else if (match.started && (!matches_timer_data[data.match_id] || matches_timer_data[data.match_id].state !== 'running')) {
@@ -403,11 +392,8 @@ io.on("connection", (socket) => {
       }
 
         const sockets = await io.in(match.match_str).fetchSockets();
-        // console.log(`Sockets in room rejoin_match" ${match.match_str}: `, sockets.map(s => s.id));
     });
-
 });
-
 
 // frontend runs on: 3000
 // backend runs on: 3001
@@ -415,6 +401,3 @@ io.on("connection", (socket) => {
 server.listen(3001, () => {
     console.log("server is running")
 })
-
-// Improved Socket.IO Server Implementation
-

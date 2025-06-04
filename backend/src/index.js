@@ -11,7 +11,7 @@ const problemRouter = require("./views/problem_view.js");
 const matchRouter = require("./views/match_view.js");
 // models
 const ProblemModel = require("./models/Problem.js");
-const TestcaseModel = require("./models/Testcase.js");
+// const TestcaseModel = require("./models/Testcase.js");
 const MatchModel = require("./models/Match.js");
 
 // create app-obj
@@ -117,6 +117,7 @@ io.on("connection", (socket) => {
                     // io.to(player2.socket_id).emit("match_found", { opponent: player1.player_id, match_str:match_str });
                     
                     // get all sockets in match-str room and emit match-found event along with some informational data. 
+                    console.log("THE NEW MATCH ID: ", response.data.match._id);
                     io.to(match_str).emit("match_found", { 
                         opponent1: player1.player_id, 
                         opponent2: player2.player_id, 

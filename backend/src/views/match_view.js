@@ -8,10 +8,15 @@ const axios = require("axios");
 const cookieParser = require('cookie-parser');
 // import models
 const ProblemModel = require("../models/Problem.js");
-const TestcaseModel = require("../models/Testcase.js");
+// const TestcaseModel = require("../models/Testcase.js");
 const MatchModel = require("../models/Match.js");
 const UserModel = require("../models/User.js");
 require('dotenv').config();  
+// code template stuff
+const typeSystem = require('../code_execution_system/data_type_system.js');
+const templateGenerators = require('../code_execution_system/template_generators');
+const codeWrappers = require('../code_execution_system/code_wrapper_generators.js');
+const generateOutputHandling = require('../code_execution_system/output_handling.js');
 
 
 // create application-express-obj, obj that handles requests
@@ -43,6 +48,8 @@ router.post("/create-match", async (req, res) => {
         const first_user = await UserModel.findById(first_player_id);
         const second_user = await UserModel.findById(second_player_id);
 
+        console.log("flag1");
+
         console.log("firstp: " + first_player_id);
         console.log("secondp: " + second_player_id);
         const new_match = new MatchModel({
@@ -51,7 +58,8 @@ router.post("/create-match", async (req, res) => {
             problem:problem_id,
             started:true,
             match_str:match_str
-        })
+        });
+        console.log("flag2");
 
 
         await new_match.save();
@@ -62,6 +70,7 @@ router.post("/create-match", async (req, res) => {
         second_user.save();
         // await first_user.save();
         // await second_user.save();
+        console.log("flag3");
 
         res.status(201).json({message: "match successfully created", match: new_match});
     } catch (error) {
@@ -75,8 +84,8 @@ router.post("/create-match", async (req, res) => {
 For displaying problem info have to fetch match, to access match.problem. 
 Every time page is refreshed this is bottle neck. So cache match. 
 */
-router.get("/get-match-problem/:match_id", async (req, res) => {
-    const { match_id } = req.params;
+router.post("/get-match-problem/:match_id", async (req, res) => {  // post-request because it has body of the langaugeID
+    const { match_id, language } = req.params;
 
     try {
         const match = await MatchModel.findById(match_id).populate('problem'); // fill in problen attribute not just its id
@@ -85,7 +94,15 @@ router.get("/get-match-problem/:match_id", async (req, res) => {
         return res.status(404).json({ message: "Match not found" });
         }
 
-        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.test_cases.length, match:match });
+        // get the dynamic template for this problem and return it to be displayed to user in component
+        let template = null; 
+        if (language && match.problem) {  // language is string version
+            if (templateGenerators[language]) {
+                template = templateGenerators[language](match.problem);
+            }
+        }
+
+        res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.testcases.length, match:match, template:template });
 
     } catch (error) {
         console.error(error);
@@ -122,86 +139,60 @@ router.post("/run-code", async (req, res) => {
 
 
 /* 
-Input given to compiler API will be "1 2 3\n9\n4 5 6\n7\n8", where each input is seperated by \n.
-Only handles array and integer inputs problems. Pass in match-id in body. 
-
-nums = list(map(int, input().split()))
-target = int(input())
-
-def two_sum(nums, target):
-    lookup = {}
-    for i, num in enumerate(nums):
-        diff = target - num
-        if diff in lookup:
-            return [lookup[diff], i]
-        lookup[num] = i
-
-result = two_sum(nums, target)
-print(result)
-
-example
-3 2 4
-6
+This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component
 */
 router.post("/submission", async (req, res) => {
     console.log("-----Submission Start Processing Testcases-----:");
 
+    // sourceCode here is what the user sees in the code-editor, that they submitted
     const {sourceCode, languageId, match_id, userID} = req.body;
 
-    
-
     try {
-        const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "test_cases" }, }); // this query is slowing down application for every submission, so use caching
+
+        const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "testcases" }, }); // this query is slowing down application for every submission, so use caching
         
-        // pass in the inputCode (which gets the input) for this problem along with the users solution
-        // when they submit its the inputCode + sourceCode they wrote
-        let full_source_code = `${match.problem.inputCode[languageId]}\n${sourceCode}`;   // get the corresponing inputCode for problem+language, add the sourceCode they submitted
+        // 🎯 Generate Executable Code: first get the code ready to be sent to judge0-api for every testcase, cause its the same code sent for every testcase
+        const language_name = getLanguageName(languageId);  // get the name of the language from its id
+        const completeWrappedCode = codeWrappers[language_name](match.problem, sourceCode); // wrap the code userCode with input parsing, and output printing
+        console.log("Complete Wrapped code being sent to Judge0:", completeWrappedCode);
 
-        // some variables for the result of the submission
+        
+        // few global variables relating to the entire submission not just a single local testcase
         let num_testcases_passed = 0;
-        let total_testcases = match.problem.test_cases.length; 
-        let first_failed_tc = null;
-        let first_failed_tc_user_output = null;
         let submission_result = "passed";
-        let display_output = "";
-        // iterate problem.testcases
-        // get each testcase input, format it pass it in compiler api get its output and check if its equal with testcase.output, 
-        // NOTE: have to iterate all testcases and then send api-request for each testcase too many requests
-        let output_information = {};
 
-        for (const cur_testcase of match.problem.test_cases) {
+        // ITERATE EVERY TESTCASE OF PROBLEM: have to iterate all testcases and then send api-request for each testcase too many requests
+        for (const cur_testcase of match.problem.testcases) {
+            console.log("Processing a testcase: ", cur_testcase.input);
 
-            // const formatted_input = format_input(cur_testcase.input);   // format list input if it has into [1,2,3]-> 1 2 3
+            // make the testcase input into structured json
+            let testcase_case_input_json = JSON.stringify(testCase.input); 
+            // send request to judge0 with given wrapped code and testcase input
+            const response = await axios.post(JUDGE0_API_URL, {source_code: completeWrappedCode, stdin: testcase_case_input_json, language_id:languageId}, {headers: JUDGE0_HEADERS});
+            console.log("API Response:", JSON.stringify(response.data, null, 2));
 
-            // for some reason there is a double slash in the testcase inputs when sending to judge0
-            const formatted_input = cur_testcase.input.replace(/\\n/g, '\n');
-            console.log("formatted-input: \n" + formatted_input);
-            console.log("Sending to Judge0:", { source_code: full_source_code, stdin: formatted_input, language_id: languageId, });
-            const response = await axios.post(JUDGE0_API_URL, {source_code: full_source_code, stdin: formatted_input, language_id: languageId,}, { headers: JUDGE0_HEADERS } ); // compiler api request, pass in input of current testcases
-            console.log("API Response Submit Code:", JSON.stringify(response.data, null, 2));
+            // for every testcase set these variables for reuslt of submission tracking based on the submission-response-obj
+            let output_information = {
+                num_testcases_passed: num_testcases_passed,   // use global variable that we have been tracking
+                total_testcases: match.problem.testcases.length,
+                status: response.data.status.id,
+                stdout: response.data.stdout,
+                stderr: response.data.stderr,
+                message: response.data.message,
+                time: response.data.time,
+                memory: response.data.memory,
+                compile_output: response.data.compile_output
+            };
 
 
-            // for every testcase set these variables
-            output_information.status = response.data.status.id;
-            output_information.stdout = response.data.stdout;
-            output_information.stderr = response.data.stderr;
-            output_information.message = response.data.message;
-            output_information.time = response.data.time;
-            output_information.memory = response.data.memory;
-            output_information.compile_output = response.data.compile_output;
-            output_information.total_testcases = total_testcases;
-
-            // output_information.first_failed_tc_inp = cur_testcase.input;
-            // output_information.first_failed_tc_output = cur_testcase.output;
-            // output_information.first_failed_tc_user_output = response.data.stdout;
-
-            console.log("response.data.status.id", response.data.status.id);
-            if (output_information.status == 11) {   // runtime error when submitting code
+            // HANDLE RUNTIME/COMPILATION ERRORS
+            if (output_information.status != 3) {   // runtime error when submitting code, 3=accepted, so no 3
                 console.log("RUNTIME ERROR");
                 let output_error_info = formatSubmissionJudge0Error(response.data);   // a string with all of the info when there is a error
                 // console.log("output_error_info ", output_error_info);
 
-                output_information.first_failed_tc_inp = cur_testcase.input;  // if runtime error set first testcase failed variables
+                // get the testcase failure information
+                output_information.first_failed_tc_inp = cur_testcase.input; 
                 output_information.first_failed_tc_output = cur_testcase.output;
                 output_information.first_failed_tc_user_output = response.data.stdout;
 
@@ -215,48 +206,49 @@ router.post("/submission", async (req, res) => {
                 
                 return res.status(201).json({
                     message: submission_result, match: match,
-                    num_testcases_passed:num_testcases_passed, 
                     total_testcases:total_testcases,
-                    display_output:output_error_info,
+                    output_error_info:output_error_info,
                     output_information:output_information,
                     found_winner: false
                 });
             }
 
-            let user_output = response.data.stdout.trim(); // trim any trailing /n because be default the judge0 compilers adds that when you print the last thing
-            // user_output = user_output.replace(/\n/g, "");
-            // console.log("User output: " + user_output + ", expected: " + cur_testcase.output);
-            
-            // check current testcase ouptut with user code output - IMPORTANT
-            if (user_output === cur_testcase.output) { 
-                num_testcases_passed++;
-                // console.log("testcase #" + cur_testcase._id + " passed");
-            } else {
-                output_information.first_failed_tc_inp = cur_testcase.input;  // if testcase failed update, first testcase failed variables inside testcase loop
-                output_information.first_failed_tc_output = cur_testcase.output;
-                output_information.first_failed_tc_user_output = response.data.stdout;
-                submission_result = "failed";
-                // console.log("testcase #" + cur_testcase._id + " failed");
+            // TESTCASE OUTPUT COMPARISON WITH USER CODE OUTPUT  
+            if (response.data.stdout) {
+                const userOutput = JSON.parse(response.data.stdout.trim())  // convert output into javascript object
+                const expectedOutput = cur_testcase.output;             //  temp variable get the otuptu of current testcase
+                
+                // Convert javascript-obj into JSON string for accuracy
+                const userOutputJson = JSON.stringify(userOutput);         // convert user output into json string
+                const expectedOutputJson = JSON.stringify(expectedOutput); // convert expected output into json string
+                
+                console.log("User output:", userJson);
+                console.log("Expected output:", expectedJson);
+
+                // JSON output comparisson
+                if (userJson === expectedJson) {
+                    num_testcases_passed++; 
+                    console.log("✅ Test case passed");
+                } else {
+                    output_information.first_failed_tc_inp = cur_testcase.input;  // if testcase failed update, first testcase failed variables inside testcase loop
+                    output_information.first_failed_tc_output = cur_testcase.output;
+                    output_information.first_failed_tc_user_output = response.data.stdout;
+                    submission_result = "failed";
+                }
+
             }
+            
             console.log("user output: ", user_output);
             console.log("testcase output: ", cur_testcase.output);
             console.log("------------finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
         };
 
-        
-        if (submission_result === "passed") {
-            display_output = "PASSED! Testcases: " + num_testcases_passed +"/" +  total_testcases;
-        } else {
-            console.log("last thing printed");
-            display_output = "FAILED! Testcases: " + num_testcases_passed +"/" +  total_testcases ;
-        }
+        // update final results of number of testcases passed
         output_information.num_testcases_passed = num_testcases_passed;
 
-        console.log("last thing printe2");
 
-        // this is compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other
-        // person hits submit
+        //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
         if (userID == match.first_player) {
             console.log("in submisison route, update my variables for first-player: ", userID);
             match.first_player_submissions++;
@@ -276,7 +268,6 @@ router.post("/submission", async (req, res) => {
             }
             await match.save();
         }
-
         
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
@@ -289,6 +280,7 @@ router.post("/submission", async (req, res) => {
         await match.save();
 
         console.log("output_information: ",output_information);
+
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({
             message: submission_result, match: match,
@@ -348,8 +340,19 @@ function formatSubmissionJudge0Error(res) {
       "",
       `(token: ${token})`,
     ].join("\n");
-  }
-  
+}
+
+
+// maps from language-id-judge0 to langauge string name
+const getLanguageName = (languageId) => {
+    const languageMap = {
+        71: 'python',
+        63: 'javascript', 
+        54: 'cpp',
+        62: 'java'
+    };
+    return languageMap[languageId] || 'python';
+};
 
 
   

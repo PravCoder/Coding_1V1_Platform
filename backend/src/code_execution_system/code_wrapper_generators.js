@@ -1,4 +1,4 @@
-const typeSystem = require('./output_handling');
+const generateOutputHandling = require('./output_handling');
 
 
 const codeWrappers = {
@@ -38,9 +38,12 @@ const codeWrappers = {
             `;
 
         return temp;
+        
+        // note: the user returns the result object and the code-execution-systems responsiblity to print it
+        // in the wrapped code using the function call
 
     }
 
 }
 
-module.exports = templateGenerators;
+module.exports = codeWrappers;

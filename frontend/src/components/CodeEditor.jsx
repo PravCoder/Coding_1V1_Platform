@@ -121,11 +121,11 @@ const CodeEditor = ({ match_id }) => {
   const fetchProblem = async (event) => {
     try {
       // this is slowing down application have to fetch problem, every time so store match in cache. 
-      const response = await axios.get(`http://localhost:3001/match/get-match-problem/${match_id}`);
+      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:language});  // send some payload language with it
       console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
       setMatch(response.data.match)
-      // console.log("match fetched: ", response.data.match);
+      setSourceCode(response.data.template);    // set the dynamic template generated for this problem, this is the user code that they see and edit
       setTotalTestcases(response.data.problem.test_cases.length);
       console.log(response.data.problem);
     } catch (error) {
@@ -275,7 +275,7 @@ const CodeEditor = ({ match_id }) => {
       console.log("submission results: " + result.data.fir + " out: " + output);
       setOutputInfo(result.data.output_information);
 
-      setOutput(result.data.display_output.split("\n"));
+      // setOutput(result.data.display_output.split("\n"));
       setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
       // setMyCurTestcases(result.data.num_testcases_passed); 
@@ -283,13 +283,13 @@ const CodeEditor = ({ match_id }) => {
       // setUserCurTestcasesPassed(result.data.cur_user_latest_testcases);
       // setUserMaxTestcasesPassed(result.data.cur_user_max_testcases);
       
-      const testcases_passed = result.data.num_testcases_passed;
+      const testcases_passed = result.data.output_information.num_testcases_passed;
       console.log("testcases_passed: " + testcases_passed);
       if (socketRef.current) {
         console.log("Emitting get_opponent_update with socket:", socketRef.current.id);
 
         const userId = getCurrentUser();
-        console.log("myCurTestcases before emitting: " + " data: " + result.data.num_testcases_passed);
+        console.log("myCurTestcases before emitting: " + " data: " + result.data.output_information.num_testcases_passed);
 
         // Emit to get opponent updates
         socketRef.current.emit("get_opponent_update", { match_id, userId, testcases_passed}, (response) => {  // first emit to request for update upon submission
@@ -403,7 +403,7 @@ const CodeEditor = ({ match_id }) => {
             />
             <div className="mt-4">
               <h2 className="font-bold text-lg">Output:</h2>
-              {outputInfo.status === 11 && (
+              {outputInfo.status != 3 && (
                 <div className="bg-red-100 text-red-700 p-3 rounded">
                   <h4>Runtime Error LIL BRO</h4>
                   <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>

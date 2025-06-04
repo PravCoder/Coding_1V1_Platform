@@ -48,15 +48,33 @@ const HomePage = () => {
   };
 
   useEffect(() => {
-    // From client: listen to match-found-event & recive the broadcasted data sent with emit from server
+    // From client: listen to match-found-event & receive the broadcasted data sent with emit from server
     socket.on("match_found", (data) => {
-      //alert("Match found:  player1: ", data.opponent1 + ", player2: "+ data.opponent2 + ", " + "match_str: "+data.match_str);
-      console.log("Match found:", data);
-      setIsSearching(false);
-      navigate(`match/${data.new_match_id}`);
-    });
+      try {
+        console.log("Match found event received:", data);
+        console.log("new_match_id:", data.new_match_id);
+        console.log("Type of new_match_id:", typeof data.new_match_id);
+        
+        if (!data.new_match_id) {
+          throw new Error("new_match_id is missing from response");
+        }
+        
+        setIsSearching(false);
+        navigate(`/match/${data.new_match_id}`);
+        
+      } catch (error) {
+        console.error("Error in match_found handler:", error);
+        console.error("Received data:", data);
+        setIsSearching(false); // Reset searching state even on error
+      }
+    }); // ← ADDED: Close the socket.on
 
-  }, [socket])
+    return () => {
+      socket.off("match_found");
+    };
+  }, [navigate]); // ← ADDED: Close the useEffect
+
+
 
   return (
     <div className="flex flex-col min-h-screen bg-black">

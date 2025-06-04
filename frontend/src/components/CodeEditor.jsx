@@ -275,7 +275,7 @@ const CodeEditor = ({ match_id }) => {
       console.log("submission results: " + result.data.fir + " out: " + output);
       setOutputInfo(result.data.output_information);
 
-      // setOutput(result.data.display_output.split("\n"));
+      setOutput(result.data.display_output.split("\n"));
       setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
       // setMyCurTestcases(result.data.num_testcases_passed); 

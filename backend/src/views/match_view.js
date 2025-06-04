@@ -164,29 +164,39 @@ router.post("/submission", async (req, res) => {
         // few global variables relating to the entire submission not just a single local testcase
         let num_testcases_passed = 0;
         let submission_result = "passed";
+        let output_information = {   // defined outside loop because we need it after testcase loop to set some variables
+            num_testcases_passed: 0,
+            total_testcases: match.problem.testcases.length,
+            status: null,
+            stdout: null,
+            stderr: null,
+            message: null,
+            time: null,
+            memory: null,
+            compile_output: null,
+            first_failed_tc_inp: null,
+            first_failed_tc_output: null,
+            first_failed_tc_user_output: null
+        };
 
         // ITERATE EVERY TESTCASE OF PROBLEM: have to iterate all testcases and then send api-request for each testcase too many requests
         for (const cur_testcase of match.problem.testcases) {
-            console.log("Processing a testcase: ", cur_testcase.input);
+            console.log("======Processing a testcase=====: ", cur_testcase.input);
 
             // make the testcase input into structured json
-            let testcase_case_input_json = JSON.stringify(testCase.input); 
+            let testcase_case_input_json = JSON.stringify(cur_testcase.input); 
             // send request to judge0 with given wrapped code and testcase input
             const response = await axios.post(JUDGE0_API_URL, {source_code: completeWrappedCode, stdin: testcase_case_input_json, language_id:languageId}, {headers: JUDGE0_HEADERS});
             console.log("API Response:", JSON.stringify(response.data, null, 2));
 
-            // for every testcase set these variables for reuslt of submission tracking based on the submission-response-obj
-            let output_information = {
-                num_testcases_passed: num_testcases_passed,   // use global variable that we have been tracking
-                total_testcases: match.problem.testcases.length,
-                status: response.data.status.id,
-                stdout: response.data.stdout,
-                stderr: response.data.stderr,
-                message: response.data.message,
-                time: response.data.time,
-                memory: response.data.memory,
-                compile_output: response.data.compile_output
-            };
+            // for every testcase set these variables for reuslt of submission tracking based on the submission-response-obj, updating output-information for every testcase
+            output_information.status = response.data.status.id;
+            output_information.stdout = response.data.stdout;
+            output_information.stderr = response.data.stderr;
+            output_information.message = response.data.message;
+            output_information.time = response.data.time;
+            output_information.memory = response.data.memory;
+            output_information.compile_output = response.data.compile_output;
 
 
             // HANDLE RUNTIME/COMPILATION ERRORS
@@ -226,11 +236,11 @@ router.post("/submission", async (req, res) => {
                 const userOutputJson = JSON.stringify(userOutput);         // convert user output into json string
                 const expectedOutputJson = JSON.stringify(expectedOutput); // convert expected output into json string
                 
-                console.log("User output:", userJson);
-                console.log("Expected output:", expectedJson);
+                console.log("User output:", userOutputJson);
+                console.log("Expected output:", expectedOutputJson);
 
                 // JSON output comparisson
-                if (userJson === expectedJson) {
+                if (userOutputJson === expectedOutputJson) {
                     num_testcases_passed++; 
                     console.log("✅ Test case passed");
                 } else {
@@ -242,7 +252,7 @@ router.post("/submission", async (req, res) => {
 
             }
             
-            console.log("user output: ", user_output);
+            console.log("user output: ", userOutput);
             console.log("testcase output: ", cur_testcase.output);
             console.log("------------finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
         
@@ -250,6 +260,17 @@ router.post("/submission", async (req, res) => {
 
         // update final results of number of testcases passed
         output_information.num_testcases_passed = num_testcases_passed;
+
+        // GENERATE DISPLAY OUTPUT
+        let display_output = "";
+        if (submission_result === "passed") {
+            display_output = `PASSED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}`;
+        } else if (first_failed_testcase) {
+            display_output = `FAILED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}\n` +
+                           `Input: ${JSON.stringify(first_failed_testcase.input)}\n` +
+                           `Expected: ${JSON.stringify(first_failed_testcase.output)}\n` +
+                           `Your output: ${JSON.stringify(output_information.first_failed_tc_user_output)}`;
+        }
 
 
         //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
@@ -289,7 +310,7 @@ router.post("/submission", async (req, res) => {
         res.status(201).json({
             message: submission_result, match: match,
             num_testcases_passed:num_testcases_passed, 
-            total_testcases:total_testcases,
+            total_testcases:output_information.total_testcases,
             display_output:display_output,
             output_information:output_information,
             found_winner: found_winner

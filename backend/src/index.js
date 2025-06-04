@@ -235,7 +235,7 @@ io.on("connection", (socket) => {
         
         // when other person submits, and they pass testcases we want to redirect our user
         let found_winner = false;
-        if (match.first_player_max_testcases_passed == match.problem.test_cases.length || match.second_player_max_testcases_passed == match.problem.test_cases.length ) {
+        if (match.first_player_max_testcases_passed == match.problem.testcases.length || match.second_player_max_testcases_passed == match.problem.testcases.length ) {
             found_winner = true;
         }
 

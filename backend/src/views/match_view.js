@@ -85,7 +85,8 @@ For displaying problem info have to fetch match, to access match.problem.
 Every time page is refreshed this is bottle neck. So cache match. 
 */
 router.post("/get-match-problem/:match_id", async (req, res) => {  // post-request because it has body of the langaugeID
-    const { match_id, language } = req.params;
+    const { match_id } = req.params;
+     const { language } = req.body;   //  get from body from client
 
     try {
         const match = await MatchModel.findById(match_id).populate('problem'); // fill in problen attribute not just its id
@@ -101,6 +102,9 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
                 template = templateGenerators[language](match.problem);
             }
         }
+
+        // console.log("language: ", language);
+        // console.log("template to display in code editor: ", template);
 
         res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.testcases.length, match:match, template:template });
 

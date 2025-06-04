@@ -6,27 +6,38 @@ const templateGenerators = {
     python: (problem) => {  // given problem-obj
         const {function_name, parameters, return_type} = problem;  // given a problem
 
-        // iterate all parameters of problem and get the problem name, and combine into a comam seperated list
+        // iterate all parameters of problem and get the problem name, and combine into a comma separated list
         const param_list = parameters.map(p => p.name).join(', ');  
-        // iterate all paramteres get the sctual type of the paramter in this language using typeSystem
-        const type_hints = parameters.map(p => `:type ${p.name}: ${typeSystem[p.type]?.python || p.type}`).join('\n    ');
+
+        // iterate all parameters and get the actual type of the parameter in this language using typeSystem
+        const type_hints = parameters
+            .map(p => `:type ${p.name}: ${typeSystem[p.type]?.python || p.type}`)
+            .join('\n');
+
         // get return type of python given general return type of problem
         const py_return_type = typeSystem[return_type]?.python || return_type;
 
-        // dynamically create a template of the problem code that the user sees, based on the given problems name and paramters their types
+        // indent type_hints lines properly for Python docstring (8 spaces inside function)
+        const indented_type_hints = type_hints
+            .split('\n')
+            .map(line => '    ' + line) // 8 spaces
+            .join('\n');
+
+        // dynamically create a template of the problem code that the user sees, based on the given problem name and parameters and their types
         // also based on the return type of problem of this language
-        let temp =
-            `def ${function_name}(${param_list}):
-                """
-                ${type_hints}
-                :rtype: ${py_return_type}
-                """
-                pass
-            `;
+         const temp = `def ${function_name}(${param_list}):
+    """
+${indented_type_hints}
+    :rtype: ${py_return_type}
+    """
+    # Your code here
+    pass`;
 
         return temp;
     },
 
+
+    
     cpp: (problem) => {
         const {function_name, parameters, return_type} = problem;
         

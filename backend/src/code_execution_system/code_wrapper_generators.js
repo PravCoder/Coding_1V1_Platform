@@ -20,22 +20,19 @@ const codeWrappers = {
         const output_handle = generateOutputHandling("python", problem.return_type);
 
         // based on input parsing code of this problem's parameteres, and users code, the function call and output printing wrap the final code
-        let temp =
-            `
-            import sys
-            import json
-            
-            # Input parsing
-            input_data = json.loads(sys.stdin.read())
-            ${inputParsingCode}
+        const temp = `import sys
+import json
 
-            # Users Solution
-            ${userCode}
+# Input parsing
+input_data = json.loads(sys.stdin.read())
+${inputParsingCode}
 
-            # Call output
-            result = ${function_call}
-            ${output_handle}
-            `;
+# User's Solution
+${userCode}
+
+# Execute and output
+result = ${function_call}
+${output_handle}`;
 
         return temp;
         

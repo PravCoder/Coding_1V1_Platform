@@ -182,6 +182,7 @@ router.post("/submission", async (req, res) => {
         // ITERATE EVERY TESTCASE OF PROBLEM: have to iterate all testcases and then send api-request for each testcase too many requests
         for (const cur_testcase of match.problem.testcases) {
             console.log("======Processing a testcase=====: ", cur_testcase.input);
+            
 
             // make the testcase input into structured json
             let testcase_case_input_json = JSON.stringify(cur_testcase.input); 
@@ -252,10 +253,7 @@ router.post("/submission", async (req, res) => {
 
             }
             
-            console.log("user output: ", userOutput);
-            console.log("testcase output: ", cur_testcase.output);
-            console.log("------------finished processing a testcase"); // if at least one of these is printed and there is a error then too many requests in 200ms error
-        
+                    
         };
 
         // update final results of number of testcases passed

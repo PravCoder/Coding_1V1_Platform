@@ -403,7 +403,7 @@ const CodeEditor = ({ match_id }) => {
             />
             <div className="mt-4">
               <h2 className="font-bold text-lg">Output:</h2>
-              {outputInfo.status != 3 && (
+              {outputInfo.status === 11 && (
                 <div className="bg-red-100 text-red-700 p-3 rounded">
                   <h4>Runtime Error LIL BRO</h4>
                   <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>

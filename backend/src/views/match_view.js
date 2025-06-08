@@ -210,14 +210,19 @@ router.post("/submission", async (req, res) => {
                 output_information.first_failed_tc_inp = cur_testcase.input; 
                 output_information.first_failed_tc_output = cur_testcase.output;
                 output_information.first_failed_tc_user_output = response.data.stdout;
+                submission_result = "runtime_error";  // set correct message, not passed or failed
 
+
+                //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
                 if (userID == match.first_player) {  // if first player submitted and there was a runtime error still update their submissions
+                    console.log("🔥 RUNTIME ERROR - Updating first-player stats:", userID);
                     match.first_player_submissions++;
-                }
-                if (userID == match.second_player) {  // if second player submitted and there was a runtime error still update their submissions
+                    match.first_player_latest_testcases_passed = 0;  // 0 for runtime error
+                } else if (userID == match.second_player) {  // if second player submitted and there was a runtime error still update their submissions
+                    console.log("🔥 RUNTIME ERROR - Updating second-player stats:", userID);
                     match.second_player_submissions++;
+                    match.second_player_latest_testcases_passed = 0;  // 0 for runtime error
                 }
-                match.save();
 
                 // JSON-strinfy the stuff ebfore sending for display
                 if (output_information.first_failed_tc_inp) {
@@ -229,11 +234,14 @@ router.post("/submission", async (req, res) => {
                 if (output_information.first_failed_tc_user_output && typeof output_information.first_failed_tc_user_output === 'object') {
                     output_information.first_failed_tc_user_output = JSON.stringify(output_information.first_failed_tc_user_output);
                 }
-                
+
+                await match.save();  // single match save to for runtime error
+
                 return res.status(201).json({
-                    message: submission_result, match: match,
+                    message: submission_result, match: match,  //  use submission_result instead of hardcoded string
+                    num_testcases_passed: 0,  //   for runtime error
                     total_testcases:output_information.total_testcases,
-                    output_error_info:output_error_info,
+                    display_output:output_error_info,  
                     output_information:output_information,
                     found_winner: false
                 });
@@ -258,9 +266,10 @@ router.post("/submission", async (req, res) => {
                 } else {
                     output_information.first_failed_tc_inp = cur_testcase.input;  // if testcase failed update, first testcase failed variables inside testcase loop
                     output_information.first_failed_tc_output = cur_testcase.output;
-                    output_information.first_failed_tc_user_output = response.data.stdout;
+                    output_information.first_failed_tc_user_output = userOutput;  // ✅ FIX: Store parsed object, not string
                     submission_result = "failed";
                     console.log("❌ Test case failed");
+                    break;  // ✅ FIX: This was already correct in your code
                 }
 
             }
@@ -286,44 +295,43 @@ router.post("/submission", async (req, res) => {
             display_output = `PASSED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}`;
         } else if (submission_result === "failed") {
             display_output = `FAILED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}\n` +
-                           `Input: ${JSON.stringify(output_information.first_failed_tc_inp)}\n` +
-                           `Expected: ${JSON.stringify(output_information.first_failed_tc_output)}\n` +
-                           `Your output: ${JSON.stringify(output_information.first_failed_tc_user_output)}`;
+                           `Input: ${output_information.first_failed_tc_inp}\n` +  // ✅ FIX: Remove extra JSON.stringify since already stringified
+                           `Expected: ${output_information.first_failed_tc_output}\n` +
+                           `Your output: ${output_information.first_failed_tc_user_output}`;
         }
 
 
         //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
+        // FIX: CONSOLIDATED STATS UPDATE (SINGLE PLACE FOR SUCCESS/FAILURE - NO DUPLICATION)
+        let found_winner = false;
         if (userID == match.first_player) {
-            console.log("in submisison route, update my variables for first-player: ", userID);
+            // console.log("Before: submissions=" + match.first_player_submissions + ", latest=" + match.first_player_latest_testcases_passed + ", max=" + match.first_player_max_testcases_passed);
             match.first_player_submissions++;
             match.first_player_latest_testcases_passed = num_testcases_passed;
             if (num_testcases_passed > match.first_player_max_testcases_passed) {
                 match.first_player_max_testcases_passed = num_testcases_passed;
             }
-            await match.save();
-
-        }
-        if (userID == match.second_player) {
-            console.log("in submisison route, update my variables for second-player: ", userID);
+            // console.log("After: submissions=" + match.first_player_submissions + ", latest=" + match.first_player_latest_testcases_passed + ", max=" + match.first_player_max_testcases_passed);
+        } else if (userID == match.second_player) {  // FIX: Use else if to prevent both blocks from running
+            // console.log("Before: submissions=" + match.second_player_submissions + ", latest=" + match.second_player_latest_testcases_passed + ", max=" + match.second_player_max_testcases_passed);
             match.second_player_submissions++;
             match.second_player_latest_testcases_passed = num_testcases_passed;
             if (num_testcases_passed > match.second_player_max_testcases_passed) {
                 match.second_player_max_testcases_passed = num_testcases_passed;
             }
-            await match.save();
+            // console.log("After: submissions=" + match.second_player_submissions + ", latest=" + match.second_player_latest_testcases_passed + ", max=" + match.second_player_max_testcases_passed);
         }
         
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
-        let found_winner = false;
-        if (submission_result === "passed") {
-            console.log("Winner found in backend submission");
+        if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  // ✅ FIX: Add check for all testcases passed
+            console.log("🏆 Winner found in backend submission");
             match.winner = userID;
             found_winner = true;
         }
+        
+        // FIX: SINGLE SAVE OPERATION AT THE END (instead of multiple saves)
         await match.save();
-
-        console.log("output_information: ",output_information);
 
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({
@@ -337,7 +345,7 @@ router.post("/submission", async (req, res) => {
 
     } catch (error) { 
         // console.error(error);
-        console.log("Error submitting code: " + error);
+        console.log("Error submitting code:" + error);
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 

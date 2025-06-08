@@ -403,21 +403,22 @@ const CodeEditor = ({ match_id }) => {
             />
             <div className="mt-4">
               <h2 className="font-bold text-lg">Output:</h2>
+              {/* Runtime Error Display */}
               {outputInfo.status === 11 && (
                 <div className="bg-red-100 text-red-700 p-3 rounded">
                   <h4>Runtime Error LIL BRO</h4>
                   <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
-                  <h4>First Failed Testcase</h4>
+                  <h4>First FAILED Testcase</h4>
                   <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
                   <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
                   <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
                 </div>
               )}
-
+              {/* Success No-Error Display */}
               {outputInfo.status === 3 && (
                 <div className="bg-green-100 text-green-800 p-3 rounded">
                   🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
-                  <h4>First Failed Testcase</h4>
+                  <h4>First FAILED Testcase</h4>
                   <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
                   <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
                   <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>

@@ -218,10 +218,21 @@ router.post("/submission", async (req, res) => {
                     match.second_player_submissions++;
                 }
                 match.save();
+
+                // JSON-strinfy the stuff ebfore sending for display
+                if (output_information.first_failed_tc_inp) {
+                    output_information.first_failed_tc_inp = JSON.stringify(output_information.first_failed_tc_inp);
+                }
+                if (output_information.first_failed_tc_output) {
+                    output_information.first_failed_tc_output = JSON.stringify(output_information.first_failed_tc_output);
+                }
+                if (output_information.first_failed_tc_user_output && typeof output_information.first_failed_tc_user_output === 'object') {
+                    output_information.first_failed_tc_user_output = JSON.stringify(output_information.first_failed_tc_user_output);
+                }
                 
                 return res.status(201).json({
                     message: submission_result, match: match,
-                    total_testcases:total_testcases,
+                    total_testcases:output_information.total_testcases,
                     output_error_info:output_error_info,
                     output_information:output_information,
                     found_winner: false
@@ -237,8 +248,8 @@ router.post("/submission", async (req, res) => {
                 const userOutputJson = JSON.stringify(userOutput);         // convert user output into json string
                 const expectedOutputJson = JSON.stringify(expectedOutput); // convert expected output into json string
                 
-                console.log("User output:", userOutputJson);
-                console.log("Expected output:", expectedOutputJson);
+                console.log("🧑 User output:", userOutputJson);
+                console.log("🤖 Expected output:", expectedOutputJson);
 
                 // JSON output comparisson
                 if (userOutputJson === expectedOutputJson) {
@@ -249,6 +260,7 @@ router.post("/submission", async (req, res) => {
                     output_information.first_failed_tc_output = cur_testcase.output;
                     output_information.first_failed_tc_user_output = response.data.stdout;
                     submission_result = "failed";
+                    console.log("❌ Test case failed");
                 }
 
             }
@@ -256,17 +268,26 @@ router.post("/submission", async (req, res) => {
                     
         };
 
-        // update final results of number of testcases passed
+        // update final results of number of testcases passed - strinify the json to display on client side
         output_information.num_testcases_passed = num_testcases_passed;
+        if (output_information.first_failed_tc_inp) {
+            output_information.first_failed_tc_inp = JSON.stringify(output_information.first_failed_tc_inp);
+        }
+        if (output_information.first_failed_tc_output) {
+            output_information.first_failed_tc_output = JSON.stringify(output_information.first_failed_tc_output);
+        }
+        if (output_information.first_failed_tc_user_output && typeof output_information.first_failed_tc_user_output === 'object') {
+            output_information.first_failed_tc_user_output = JSON.stringify(output_information.first_failed_tc_user_output);
+        }
 
         // GENERATE DISPLAY OUTPUT
         let display_output = "";
         if (submission_result === "passed") {
             display_output = `PASSED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}`;
-        } else if (first_failed_testcase) {
+        } else if (submission_result === "failed") {
             display_output = `FAILED! Testcases: ${num_testcases_passed}/${output_information.total_testcases}\n` +
-                           `Input: ${JSON.stringify(first_failed_testcase.input)}\n` +
-                           `Expected: ${JSON.stringify(first_failed_testcase.output)}\n` +
+                           `Input: ${JSON.stringify(output_information.first_failed_tc_inp)}\n` +
+                           `Expected: ${JSON.stringify(output_information.first_failed_tc_output)}\n` +
                            `Your output: ${JSON.stringify(output_information.first_failed_tc_user_output)}`;
         }
 

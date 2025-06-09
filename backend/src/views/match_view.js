@@ -269,7 +269,7 @@ router.post("/submission", async (req, res) => {
                     output_information.first_failed_tc_user_output = userOutput;  // ✅ FIX: Store parsed object, not string
                     submission_result = "failed";
                     console.log("❌ Test case failed");
-                    break;  // ✅ FIX: This was already correct in your code
+                    break;  // if testcase is failed break aout of this loop and go to updating the my/opp variables
                 }
 
             }

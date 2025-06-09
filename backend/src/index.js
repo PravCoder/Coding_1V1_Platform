@@ -58,6 +58,21 @@ let userID = null;
 // this is in-memory cache for timing data, later might need to refactor to match.state = active, running, countdown
 const matches_timer_data  = {};
 
+// helper function to clear match timer and prevent flickers
+const clearMatchTimer = (match_id) => {
+    console.log(`clearing timer for match: ${match_id}`);
+    if (matches_timer_data[match_id]) {
+        // clear the interval if it exists
+        if (matches_timer_data[match_id].timerInterval) {
+            clearInterval(matches_timer_data[match_id].timerInterval);
+            console.log(`⏹️ Cleared timer interval for match: ${match_id}`);
+        }
+        // remove the match from memory
+        delete matches_timer_data[match_id];
+        console.log(`🗑️ Removed timer data for match: ${match_id}`);
+    }
+};
+
 // listening to connection-event which is triggered when a user establishes connection with server, when they open app
 // socket-obj represents specific client that is connected. Everytime you open new tab it prints new socket.id.
 io.on("connection", (socket) => {
@@ -122,7 +137,9 @@ io.on("connection", (socket) => {
                     
                     // TIMER SYNC STUFF BELOW
                     const new_match_id = response.data.match._id; // ✅ Define the variable properly
-                    
+                    // clear any existing timer data for this match id to prevent flickering
+                    clearMatchTimer(new_match_id);
+
                     // if we dont have this match-timer in our in-memory store yet, init it
                     if (!matches_timer_data[new_match_id]) {
                       matches_timer_data[new_match_id] = {
@@ -151,7 +168,7 @@ io.on("connection", (socket) => {
                         
                         if (count < 0) {
                           clearInterval(countdownInterval);
-                          // Start the match timer
+                          // start the match timer fresh
                           const startTime = Date.now();
                           matches_timer_data[new_match_id].state = 'running'; // ✅ Use new_match_id
                           matches_timer_data[new_match_id].startTime = startTime; // ✅ Use new_match_id
@@ -164,9 +181,14 @@ io.on("connection", (socket) => {
                           
                           io.to(match_str).emit('match_started', { startTime }); // ✅ Use match_str
                           
+                          // clear and existing timer before starting new one
+                          if (matches_timer_data[new_match_id].timerInterval) {
+                            clearInterval(matches_timer_data[new_match_id].timerInterval);
+                          }
+                          
                           // Start a timer interval to update all clients
                           const timerInterval = setInterval(async () => {
-                            if (!matches_timer_data[new_match_id]) {
+                            if (!matches_timer_data[new_match_id] || matches_timer_data[new_match_id].state !== 'running') { // double-check timer data exists and is running
                               clearInterval(timerInterval);
                               return;
                             }
@@ -237,6 +259,7 @@ io.on("connection", (socket) => {
         let found_winner = false;
         if (match.first_player_max_testcases_passed == match.problem.testcases.length || match.second_player_max_testcases_passed == match.problem.testcases.length ) {
             found_winner = true;
+            clearMatchTimer(data.match_id);
         }
 
         // emit back with updated match-obj, everyone in room except sender use socket.to() else use io.to() we are sending opponents updates so dont emit to cur-person. 

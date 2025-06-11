@@ -44,7 +44,7 @@ router.post("/create-match", async (req, res) => {
     try {
 
         
-        const {first_player_id, second_player_id, problem_id, match_str, userID} = req.body; // use match-str to send emits?
+        const {first_player_id, second_player_id, problem_id, match_str, userID, match_type} = req.body; // use match-str to send emits?
         const first_user = await UserModel.findById(first_player_id);
         const second_user = await UserModel.findById(second_player_id);
 
@@ -57,7 +57,8 @@ router.post("/create-match", async (req, res) => {
             second_player: second_player_id,
             problem:problem_id,
             started:true,
-            match_str:match_str
+            match_str:match_str, 
+            type: match_type   // update type of match from toggle either regular or explanation
         });
         // console.log("flag2");
 
@@ -72,6 +73,7 @@ router.post("/create-match", async (req, res) => {
         // await second_user.save();
         // console.log("flag3");
 
+        console.log(new_match.type + " match created");
         res.status(201).json({message: "match successfully created", match: new_match});
     } catch (error) {
         console.error(error);

@@ -39,6 +39,9 @@ const CodeEditor = ({ match_id }) => {
   const [showOpponentBox, setShowOpponentBox] = useState(true);
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [outputInfo, setOutputInfo] = useState({});
+  const [matchType, setMatchType] = useState({});   // either regular or explanation
+  const [explanationTranscript, setExplanationTranscript] = useState("");
+  const recognitionRef = useRef(null);  // if its a explanation match use this
   const [isMatchStarted, setIsMatchStarted] = useState(() => {
     return !!localStorage.getItem('match_start_time');
   });
@@ -127,6 +130,7 @@ const CodeEditor = ({ match_id }) => {
       setMatch(response.data.match)
       setSourceCode(response.data.template);    // set the dynamic template generated for this problem, this is the user code that they see and edit
       setTotalTestcases(response.data.problem.testcases.length);
+      setMatchType(response.data.match.type); // update the match type stored in match-obj from toggle in find-match page
       console.log(response.data.problem);
     } catch (error) {
       // console.error(error.response.data.message);  
@@ -312,6 +316,58 @@ const CodeEditor = ({ match_id }) => {
       // console.error(error.response.data.message);  
     }
   };
+
+  useEffect(() => {
+    if (matchType !== "explanation") {
+      if (recognitionRef.current) recognitionRef.current.stop();
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Speech Recognition API not supported in this browser");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let interimTranscript = "";
+      let newFinalText = "";
+
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const transcriptPart = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          newFinalText += transcriptPart + " ";  // add the current speech to everything that was said before
+        } else {
+          interimTranscript += transcriptPart;
+        }
+      }
+
+      if (newFinalText) {
+        setExplanationTranscript(prev => prev + newFinalText);
+      }
+
+      console.log("Live transcript:", explanationTranscript);  // current transcript of what was just said, this might still lag one update due to state async nature
+    };
+
+    recognition.onerror = (event) => {
+      console.error("Speech recognition error", event.error);
+    };
+
+    recognition.start();
+    recognitionRef.current = recognition;
+
+    return () => recognition.stop();
+  }, [matchType]);
+
+  // just for printing the entire transcript
+  useEffect(() => {
+    console.log("Updated entire transcript:", explanationTranscript);
+  }, [explanationTranscript]);
 
 
   console.log("outputinfo: ", outputInfo);

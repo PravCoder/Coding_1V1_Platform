@@ -11,7 +11,7 @@ const socket = io.connect("http://localhost:3001");
 const HomePage = () => {
   const [user, setUser] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isSpeechToText, setIsSpeechToText] = useState(false);
+  const [isSpeechToText, setIsSpeechToText] = useState(false); // is this a explanation match
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const userID = getCurrentUser();
@@ -21,7 +21,7 @@ const HomePage = () => {
   const handleFindMatch = () => {
     setIsSearching(true);
     // From client: emit find-match-event & broadcast data to  server listening to find-match-event
-    socket.emit("find_match", { player_id: userID });
+    socket.emit("find_match", { player_id: userID, explanation_match:isSpeechToText, streaming:isStreaming });
   };
 
   const toggleStreaming = () => {

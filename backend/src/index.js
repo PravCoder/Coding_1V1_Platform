@@ -140,7 +140,8 @@ io.on("connection", (socket) => {
                 second_player_id: player2.player_id,
                 problem_id:random_problem,
                 match_str:match_str,
-                userID: userID  // send userID with it which we got from client the first time above and to add it to user.matches
+                userID: userID,  // send userID with it which we got from client the first time above and to add it to user.matches
+                match_type: data.explanation_match ? "explanation" : "regular"  // when creating match send in the type of match it is from the toggle
             })
                 .then(async response => {
                     console.log("match created successfuly:", response.data);

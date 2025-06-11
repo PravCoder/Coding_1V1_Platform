@@ -126,7 +126,7 @@ const CodeEditor = ({ match_id }) => {
       setProblem(response.data.problem);
       setMatch(response.data.match)
       setSourceCode(response.data.template);    // set the dynamic template generated for this problem, this is the user code that they see and edit
-      setTotalTestcases(response.data.problem.test_cases.length);
+      setTotalTestcases(response.data.problem.testcases.length);
       console.log(response.data.problem);
     } catch (error) {
       // console.error(error.response.data.message);  

@@ -58,6 +58,9 @@ let userID = null;
 // this is in-memory cache for timing data, later might need to refactor to match.state = active, running, countdown
 const matches_timer_data  = {};
 
+// track which playesr are in which matches, player_id -> match_id
+const player_match_tracking = new Map();
+
 // helper function to clear match timer and prevent flickers
 const clearMatchTimer = (match_id) => {
     console.log(`clearing timer for match: ${match_id}`);
@@ -65,12 +68,26 @@ const clearMatchTimer = (match_id) => {
         // clear the interval if it exists
         if (matches_timer_data[match_id].timerInterval) {
             clearInterval(matches_timer_data[match_id].timerInterval);
-            console.log(`⏹️ Cleared timer interval for match: ${match_id}`);
+            console.log(`⏹️ cleared timer interval for match: ${match_id}`);
         }
         // remove the match from memory
         delete matches_timer_data[match_id];
-        console.log(`🗑️ Removed timer data for match: ${match_id}`);
+        console.log(`🗑️ removed timer data for match: ${match_id}`);
     }
+};
+// once a player enter a new match we should clear all the timer data with the old match, incase if they left in the middle
+const cleanupPlayerOldMatches = (player_id, new_match_id) => {  
+    console.log(`Cleaning up old matches for player: ${player_id}`);
+    
+    const old_match_id = player_match_tracking.get(player_id);
+    
+    if (old_match_id && old_match_id !== new_match_id) {
+        console.log(`🧹 player ${player_id} was in match ${old_match_id}, cleaning up...`);
+        clearMatchTimer(old_match_id, "player_left_for_new_match");
+    }
+
+    // update tracking
+    player_match_tracking.set(player_id, new_match_id);
 };
 
 // listening to connection-event which is triggered when a user establishes connection with server, when they open app
@@ -82,6 +99,9 @@ io.on("connection", (socket) => {
     socket.on("find_match", async (data) => {
         console.log("find match for: " + data.player_id);
         userID = data.player_id;
+
+        // clean up any  old matches for this player once they press find match. 
+        cleanupPlayerOldMatches(data.player_id, null);
 
         // there are not enough players to create match add cur-player to queue to wait
         if (player_queue.length == 0) {  
@@ -137,6 +157,10 @@ io.on("connection", (socket) => {
                     
                     // TIMER SYNC STUFF BELOW
                     const new_match_id = response.data.match._id; // ✅ Define the variable properly
+                    
+                    // track both players in this new match we created
+                    player_match_tracking.set(player1.player_id, new_match_id);
+                    player_match_tracking.set(player2.player_id, new_match_id);
                     // clear any existing timer data for this match id to prevent flickering
                     clearMatchTimer(new_match_id);
 

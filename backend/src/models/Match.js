@@ -42,6 +42,9 @@ const MatchSchema = new mongoose.Schema({
     
     // used to connect sockets into a room, room id
     match_str: {type: String, required:false, default: ""},
+
+    // amount of time match took place in seconds, for timer counting down
+    duration: { type: Number, default: 1800 }
 })
 
 const MatchModel = mongoose.model("Match", MatchSchema);

@@ -44,7 +44,10 @@ const MatchSchema = new mongoose.Schema({
     match_str: {type: String, required:false, default: ""},
 
     // amount of time match took place in seconds, for timer counting down
-    duration: { type: Number, default: 1800 }
+    duration: { type: Number, default: 1800 },
+
+    // by way of win
+    win_condition: {type: String, required:false, default: "regular"},  
 })
 
 const MatchModel = mongoose.model("Match", MatchSchema);

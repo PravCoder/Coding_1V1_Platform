@@ -196,26 +196,25 @@ const CodeEditor = ({ match_id }) => {
       }
     }
 
+    const handleMatchTimeExpired = (data) => {
+      console.log("match complete due to time expiration: ", data);
+      alert(`Time's up! ${data.winner} wins by ${data.win_condition}`);   // pop-up that match 
+      navigate(`/match-outcome/${match_id}`);  // redirect to match outcome page
+    }
+    socketRef.current.on("match_completed_timeout", handleMatchTimeExpired);  // listening for this event emit, which is in index.js when time runs out
+
+  
+
     // when we get an emit from server do handleOpponentUpdate, it has updated match-obj
     socketRef.current.on("opponent_update", handleOpponentUpdate); 
-
     socketRef.current.on("user_update", handleUserMyUpdate); 
-
-
-    // only set the startingCode if it hasnt been set yet
-    // if (problem?.startingCode && languageOptions[language] && !sourceCode) {
-    //   const languageId = languageOptions[language];
-    //   const codeTemplate = problem.startingCode[languageId];
-    //   if (codeTemplate) {
-    //     setSourceCode(codeTemplate);
-    //   }
-    // }
   
 
     // cleanup function
     return () => {
       socketRef.current.off("opponent_update", handleOpponentUpdate);
       socketRef.current.off("user_update", handleOpponentUpdate);
+      socketRef.current.off('match_completed_timeout', handleMatchTimeExpired);
     };
   }, [match_id]);
 

@@ -61,6 +61,8 @@ const matches_timer_data  = {};
 // track which playesr are in which matches, player_id -> match_id
 const player_match_tracking = new Map();
 
+const TIME_PER_MATCH = 0.3 * 60;  // minutes * 60 seconds, just chang the number of minutes.
+
 // helper function to clear match timer and prevent flickers
 const clearMatchTimer = (match_id) => {
     console.log(`clearing timer for match: ${match_id}`);
@@ -171,7 +173,7 @@ io.on("connection", (socket) => {
                         state: 'waiting',
                         timerInterval: null,
                         startTime: null,
-                        duration: 1800 // 30 minutes in seconds (30 * 60)
+                        duration: TIME_PER_MATCH // 30 minutes in seconds (30 * 60)
                     };
                     
                     // check if we correctly added the sockets-players into match-str-room
@@ -221,16 +223,29 @@ io.on("connection", (socket) => {
                             const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000);
                             const remainingSeconds = Math.max(0, matches_timer_data[new_match_id].duration - elapsedSeconds);
 
-                            // Check if time is up
+                            // TIME EXPIRED CHECK
                             if (remainingSeconds <= 0) {
                               clearInterval(timerInterval);
-                              // Handle match timeout
-                              await MatchModel.findByIdAndUpdate(new_match_id, { 
-                                time_stop_watch: "00:00:00",
-                                status: "timeout"
-                              });
+                              console.log(`⏰ Timer expired for match: ${new_match_id}`);
+                              const winnerResult = await determineMatchWinner(new_match_id);   // determine who won on testcases
+                              if (winnerResult) {
+                                const { winner, win_condition } = winnerResult;
+                                // update final time for consistancy
+                                await MatchModel.findByIdAndUpdate(new_match_id, { 
+                                  time_stop_watch: "00:00:00"
+                                });
+                                
+                                // emit that the match time has expired client
+                                if (winner) {
+                                  io.to(match_str).emit("match_completed_timeout", {
+                                    winner: winner,
+                                    win_condition: win_condition,
+                                  });
+                                } 
+                                
+                                console.log(`🏆 Match ${new_match_id} completed. Winner: ${winner}, Condition: ${win_condition}`);
+                              }
                               
-                              io.to(match_str).emit('match_timeout');
                               clearMatchTimer(new_match_id);
                               return;
                             }
@@ -414,19 +429,14 @@ io.on("connection", (socket) => {
         // Reconstruct start time by going backwards from now
         const now = Date.now();
         const reconstructedStartTime = now - (totalSeconds * 1000);
-        // Initialize the match in our in-memory store
-        matches_timer_data[data.match_id] = {
-          state: 'running',
-          startTime: reconstructedStartTime,
-          timerInterval: null
-        };
+        // initialize the match in our in-memory store
         // Start a new timer interval
         
         matches_timer_data[data.match_id] = {
           state: 'running',
           startTime: reconstructedStartTime,
           timerInterval: null,
-          duration: 1800 // Add duration here too
+          duration: TIME_PER_MATCH // Add duration here too
         };
 
         // Start a new timer interval
@@ -439,15 +449,29 @@ io.on("connection", (socket) => {
           const elapsedSeconds = Math.floor((currentTime - matches_timer_data[data.match_id].startTime) / 1000);
           const remainingSeconds = Math.max(0, matches_timer_data[data.match_id].duration - elapsedSeconds);
           
-          // Check if time is up
+          // TIME EXPIRED CHECK
           if (remainingSeconds <= 0) {
             clearInterval(timerInterval);
-            await MatchModel.findByIdAndUpdate(data.match_id, { 
-              time_stop_watch: "00:00:00",
-              status: "timeout"
-            });
-            io.to(match.match_str).emit('match_timeout');
-            clearMatchTimer(data.match_id);
+            console.log(`⏰ Timer expired for match: ${match._id}`);
+            const winnerResult = await determineMatchWinner(match._id);   // determine who won on testcases
+            if (winnerResult) {
+              const { winner, win_condition } = winnerResult;
+              // update final time for consistancy
+              await MatchModel.findByIdAndUpdate(match._id, { 
+                time_stop_watch: "00:00:00"
+              });
+              
+              // emit that the match time has expired to the cleint
+              if (winner) {
+                io.to(match.match_str).emit("match_completed_timeout", {
+                  winner: winner,
+                  win_condition: win_condition,
+                });
+              } 
+              
+              console.log(`🏆 Match ${match._id} completed. Winner: ${winner}, Condition: ${win_condition}`);
+            }
+            clearMatchTimer(match.new_match_id);
             return;
           }
           
@@ -472,7 +496,7 @@ io.on("connection", (socket) => {
         }, 1000);
 
         // Calculate remaining seconds for initial sync
-        const remainingSecondsForSync = Math.max(0, 1800 - totalSeconds);
+        const remainingSecondsForSync = Math.max(0, TIME_PER_MATCH - totalSeconds);
         const hoursSync = Math.floor(remainingSecondsForSync / 3600);
         const minutesSync = Math.floor((remainingSecondsForSync % 3600) / 60);
         const secondsSync = remainingSecondsForSync % 60;
@@ -490,6 +514,56 @@ io.on("connection", (socket) => {
         const sockets = await io.in(match.match_str).fetchSockets();
     });
 });
+
+
+
+/* 
+Returns player id and way of win after match timeouts 
+
+After match timesouts and nobody solved it completely:
+Solved more testcases
+Tie same amount of testcases passed
+*/
+const determineMatchWinner = async (match_id) => {
+
+  try {
+    const match = await MatchModel.findById(match_id).populate('problem');
+  
+    const totalTestcases = match.problem.testcases.length;
+    const player1MaxPassed = match.first_player_max_testcases_passed || 0;
+    const player2MaxPassed = match.second_player_max_testcases_passed || 0;
+    let win_condition = "";
+
+    if (player1MaxPassed > player2MaxPassed) {
+      winner = match.first_player;
+      win_condition = "more_testcases";
+    } else if (player2MaxPassed > player1MaxPassed) {
+      winner = match.second_player;
+      win_condition = "more_testcases";
+    }
+
+    if (player1MaxPassed === player2MaxPassed) {
+      winner = match.first_player;   // need to change this
+      win_condition = "tie";
+    }
+    
+    // update match with winner and win-condition
+    await MatchModel.findByIdAndUpdate(match_id, {
+      winner: winner,
+      win_condition: win_condition,
+      status: "completed",
+      ended_at: new Date()
+    });
+
+    return { winner, win_condition, match };
+
+  } catch (error) {
+    console.error('Error determining winner:', error);
+    return null;
+
+  }
+
+}
 
 // frontend runs on: 3000
 // backend runs on: 3001

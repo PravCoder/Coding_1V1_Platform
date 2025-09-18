@@ -1,5 +1,5 @@
 
-// given a language gets the code that prints the users solution
+// given a language gets the code-snippet that prints the users solution
 const generateOutputHandling = (language, return_type) => {
     if (language === "python") {
         return 'print(json.dumps(result))';

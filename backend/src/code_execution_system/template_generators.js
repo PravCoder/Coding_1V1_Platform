@@ -1,6 +1,23 @@
 const typeSystem = require('./data_type_system');
 
-// generates the *user code* template what they see based on different languages dyanmically
+// generates the *user code* template "what the user sees" based on different languages dyanmically
+/* 
+For example what the user sees:
+def twoSum(nums, target):
+    """
+    :type nums: List[int]
+    :type target: int
+    :rtype: List[int]
+    """
+    # Your code here
+    pass
+
+Given the problem function_name, parameters, return_type it creates those parameter/type-hint comments dynamically.
+Also generates funtion header given langauge, function-name, parameters dynamically.
+
+When user is in match we have to fetchProblem(), this calls request /get-match-problem, which everytime dynamically creates the template using
+templateGenerators below for that problem.
+*/
 const templateGenerators = {
     
     python: (problem) => {  // given problem-obj

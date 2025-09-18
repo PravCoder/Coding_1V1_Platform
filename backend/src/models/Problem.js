@@ -53,7 +53,7 @@ Problem Example JSON:
     }
   ],
   "return_type": "number[]",
-  "testCases": [
+  "testcases": [
     {
       "input": {
         "nums": [2, 7, 11, 15],

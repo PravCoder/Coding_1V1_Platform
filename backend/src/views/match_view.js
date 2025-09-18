@@ -97,11 +97,11 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
         return res.status(404).json({ message: "Match not found" });
         }
 
-        // get the dynamic template for this problem and return it to be displayed to user in component
+        // get the dynamic template for this problem and return it to be displayed to user in CodeEditor.jsx component
         let template = null; 
         if (language && match.problem) {  // language is string version
             if (templateGenerators[language]) {
-                template = templateGenerators[language](match.problem);
+                template = templateGenerators[language](match.problem);     // get the template based on this problem attribuets, look at what template-generators takes in
             }
         }
 
@@ -159,7 +159,8 @@ router.post("/submission", async (req, res) => {
         
         // 🎯 Generate Executable Code: first get the code ready to be sent to judge0-api for every testcase, cause its the same code sent for every testcase
         const language_name = getLanguageName(languageId);  // get the name of the language from its id
-        const completeWrappedCode = codeWrappers[language_name](match.problem, sourceCode); // wrap the code userCode with input parsing, and output printing
+        // wrap the code userCode-template with input parsing, output printing, etc to its runnable
+        const completeWrappedCode = codeWrappers[language_name](match.problem, sourceCode); 
         console.log("Complete Wrapped code being sent to Judge0:", completeWrappedCode);
 
         

@@ -61,7 +61,7 @@ const matches_timer_data  = {};
 // track which playesr are in which matches, player_id -> match_id
 const player_match_tracking = new Map();
 
-const TIME_PER_MATCH = 0.3 * 60;  // minutes * 60 seconds, just change the number of minutes.
+const TIME_PER_MATCH = 10 * 60;  // minutes * 60 seconds, just change the number of minutes.
 
 // helper function to clear match timer and prevent flickers
 const clearMatchTimer = (match_id) => {

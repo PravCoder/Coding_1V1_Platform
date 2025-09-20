@@ -91,22 +91,27 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
      const { language } = req.body;   //  get from body from client
 
     try {
-        const match = await MatchModel.findById(match_id).populate('problem'); // fill in problen attribute not just its id
+        const match = await MatchModel.findById(match_id).populate("problem"); // fill in problen attribute not just its id
 
         if (!match) {
         return res.status(404).json({ message: "Match not found" });
         }
+
+        console.log("GET-MATCH-PROBLEM VIEW");
+        console.log("new language: ", language);
+        console.log("problem params: ", match.problem.parameters);
+        // BUG: problem parameters where each param has a type & name, the type is only in one language python in the db, so the data_type_system is not recognizing it
 
         // get the dynamic template for this problem and return it to be displayed to user in CodeEditor.jsx component
         let template = null; 
         if (language && match.problem) {  // language is string version
             if (templateGenerators[language]) {
                 template = templateGenerators[language](match.problem);     // get the template based on this problem attribuets, look at what template-generators takes in
+                // console.log("template: ", template);
             }
         }
 
         // console.log("language: ", language);
-        // console.log("template to display in code editor: ", template);
 
         res.status(200).json({ message: "Match retrieved successfully", problem:match.problem, total_testcases:match.problem.testcases.length, match:match, template:template });
 

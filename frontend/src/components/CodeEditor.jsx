@@ -12,9 +12,8 @@ const socket = io.connect("http://localhost:3001");
 
 
 const languageOptions = {
-  javascript: 63,
   python: 71,
-  "c++": 54,
+  cpp: 54,    // make sure these are keys in 
   java: 62,
 };
 
@@ -124,7 +123,8 @@ const CodeEditor = ({ match_id }) => {
   const fetchProblem = async (event) => {
     try {
       // this is slowing down application have to fetch problem, every time so store match in cache. 
-      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:language});  // send some payload language with it
+      console.log("fetch problem language: ", language);
+      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:language});  // string version language. send some payload language with it
       console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
       setMatch(response.data.match)
@@ -219,17 +219,23 @@ const CodeEditor = ({ match_id }) => {
   }, [match_id]);
 
 
-  const handleLanguageChange = (e) => {
+  const handleLanguageChange = async (e) => {
     const newLanguage = e.target.value;
     setLanguage(newLanguage);
     // When language changes, load the corresponding template
-    if (problem?.startingCode && languageOptions[newLanguage]) {
-      const languageId = languageOptions[newLanguage];
-      const codeTemplate = problem.startingCode[languageId];
-      if (codeTemplate) {
-        setSourceCode(codeTemplate);
-      }
-    }
+    // if (problem?.startingCode && languageOptions[newLanguage]) {
+    //   const languageId = languageOptions[newLanguage];
+    //   const codeTemplate = problem.startingCode[languageId];
+    //   if (codeTemplate) {
+    //     setSourceCode(codeTemplate);
+    //   }
+    // }
+    console.log("language change new language: ", newLanguage);
+    const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:newLanguage});  // send some payload language with it
+    console.log("handleLanguageChange get-match-problem response data: ", response);
+    setProblem(response.data.problem);
+    setMatch(response.data.match);
+    setSourceCode(response.data.template); 
   };
 
   // Separate effect to set initial code when problem first loads

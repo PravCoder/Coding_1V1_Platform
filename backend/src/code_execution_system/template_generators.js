@@ -59,20 +59,20 @@ ${indented_type_hints}
         const {function_name, parameters, return_type} = problem;
         
         // iterate all parameters of problem and get the cpp-type of each paramter combine it with the paramter-name into a string
-        const cpp_params = parameters.map(p => `${typeSystem[p.type]?.java || p.type} ${p.name}`).join(', ');
+        const cpp_params = parameters.map(p => `${typeSystem[p.type]?.cpp || p.type} ${p.name}`).join(', ');
         // get the c-- reuturn type based on problem general type
-        const cpp_return_type = typeSystem[return_type]?.java || return_type;
+        const cpp_return_type = typeSystem[return_type]?.cpp || return_type;
 
         // create dynamic template for problem in cpp based on return type, function name, parameters
         let temp = 
-            `
-            class Solution {
-                public:
-                    ${cpp_return_type} ${function_name}(${cpp_params}) {
-                        // Your code here
-                    }
-            };
-            `;
+`
+class Solution {
+    public:
+        ${cpp_return_type} ${function_name}(${cpp_params}) {
+            // Your code here
+        }
+};
+`;
         return temp;
     },
 
@@ -86,14 +86,16 @@ ${indented_type_hints}
 
         // create a dynamic remplate for problem in java based onreturn type, function name, and paramters and its types of problem.
         let temp = 
-            `
-            class Solution {
-                public ${java_return_type} ${function_name}(${java_params}) {
-                    // Your code here
-                    return null;
-                }
-            }
-            `;
+`
+class Solution {
+    public ${java_return_type} ${function_name}(${java_params}) {
+        // Your code here
+        return null;
+    }
+}
+`;
+        
+        return temp;
     }
 
 }

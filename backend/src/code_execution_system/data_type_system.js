@@ -21,7 +21,7 @@ const typeSystem = {
         cpp: 'bool' 
     },
 
-    // array types and there corresponding types in each language
+    // array types and there corresponding types in each language, TBD do for each type of list like int, double, bool, string.
     'number[]': { 
         python: 'List[int]', 
         javascript: 'number[]', 

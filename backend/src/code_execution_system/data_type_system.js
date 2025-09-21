@@ -1,47 +1,75 @@
 
-// converts general data type into the lanaguage specific data type equivalent
+// converts general data type (whats stored in the problem object in db) into the lanaguage specific data type equivalent
+// this is used create data types for parameters, returns type for each problem in each langauge dynamically
 const typeSystem = {
-    // primitive types and there corresponding types in each language
-    'number': { 
-        python: 'int', 
-        javascript: 'number', 
-        java: 'int', 
-        cpp: 'int' 
+
+    // Single Value Types: in each language
+    "int": { 
+        python: "int", 
+        java: "int", 
+        cpp: "int" 
     },
-    'string': { 
-        python: 'str', 
-        javascript: 'string', 
-        java: 'String', 
-        cpp: 'string' 
+    "double": { 
+        python: "float", 
+        java: "double", 
+        cpp: "double" 
     },
-    'boolean': { 
-        python: 'bool', 
-        javascript: 'boolean', 
-        java: 'boolean', 
-        cpp: 'bool' 
+    "string": { 
+        python: "str", 
+        java: "String", 
+        cpp: "string"
+    },
+    "boolean": { 
+        python: "bool", 
+        java: "boolean", 
+        cpp: "bool" 
     },
 
-    // array types and there corresponding types in each language, TBD do for each type of list like int, double, bool, string.
-    'number[]': { 
-        python: 'List[int]', 
-        javascript: 'number[]', 
-        java: 'int[]', 
-        cpp: 'vector<int>' 
+    
+    // Array Types: each array data type for each language. 
+    "int[]": { 
+        python: "List[int]", 
+        java: "int[]", 
+        cpp: "vector<int>"
     },
-    'string[]': { 
-        python: 'List[str]', 
-        javascript: 'string[]', 
-        java: 'String[]', 
-        cpp: 'vector<string>' 
+    "double[]": {                       // same thing as double
+        python: "List[float]", 
+        java: "double[]", 
+        cpp: "vector<double>"
     },
-    'number[][]': { 
-        python: 'List[List[int]]', 
-        javascript: 'number[][]', 
-        java: 'int[][]', 
-        cpp: 'vector<vector<int>>' 
+    "boolean[]": { 
+        python: "List[bool]", 
+        java: "boolean[]", 
+        cpp: "vector<bool>"
+    },
+    "string[]": { 
+        python: "List[str]", 
+        java: "String[]", 
+        cpp: "vector<string>"
     },
 
-    // complex types, tbd
+    // The different 2D-array types for different primitative types for each language
+    "int[][]": { 
+        python: "List[List[int]]", 
+        java: "int[][]", 
+        cpp: "vector<vector<int>>"
+    },
+    "double[][]": { 
+        python: "List[List[float]]", 
+        java: "double[][]", 
+        cpp: "vector<vector<double>>"
+    },
+    "boolean[][]": { 
+        python: "List[List[bool]]", 
+        java: "boolean[][]", 
+        cpp: "vector<vector<bool>>"
+    },
+    "string[][]": { 
+        python: "List[List[str]]", 
+        java: "String[][]", 
+        cpp: "vector<vector<string>>"
+    },
+
 
 
 }

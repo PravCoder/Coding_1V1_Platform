@@ -70,6 +70,7 @@ class Solution {
     public:
         ${cpp_return_type} ${function_name}(${cpp_params}) {
             // Your code here
+            return {}; 
         }
 };
 `;

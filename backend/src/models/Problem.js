@@ -12,7 +12,7 @@ const ProblemSchema = new mongoose.Schema({
     // array of input parameters of the problem
     parameters: [{
         name: { type: String, required: false },   // name of input-param displayed on screen, "nums"
-        type: { type: String, required: true },    //  type of input-param, "number[]", general type name not specific to a language type
+        type: { type: String, required: true },    // these are hte keys in dataTypeSystem,  type of input-param, "int[]", general type name not specific to a language type.
     }],
 
     // the type of the return object that should be returned by user

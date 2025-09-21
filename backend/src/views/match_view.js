@@ -149,6 +149,85 @@ router.post("/run-code", async (req, res) => {
 });
 
 
+
+// HELPER: for java/c++ we have to pass stdin-input in a different format not json like for python, it has to be a string
+function generateStdinInput(cur_testcase, parameters, language) {
+  if (language !== 'cpp' && language !== 'java') {
+    // For other languages (like Python), return JSON of the input
+    return JSON.stringify(cur_testcase.input);
+  }
+
+  let stdinLines = [];
+  
+  // Process each parameter in the order they appear in the function signature
+  for (const param of parameters) {
+    const value = cur_testcase.input[param.name];
+    
+    if (Array.isArray(value)) {
+      if (Array.isArray(value[0])) {
+        // 2D Array: First line = rows cols, then each row on separate lines
+        const rows = value.length;
+        const cols = value[0].length;
+        stdinLines.push(`${rows} ${cols}`);
+        
+        for (const row of value) {
+          stdinLines.push(row.join(' '));
+        }
+      } else {
+        // 1D Array: First line = size, second line = elements space-separated
+        stdinLines.push(value.length.toString());
+        stdinLines.push(value.join(' '));
+      }
+    } else {
+      // Simple value: Just the value on its own line
+      stdinLines.push(value.toString());
+    }
+  }
+  
+  // join all lines with newline characters
+  return stdinLines.join('\n');
+}
+// HELPER: converts from id to name
+const language_id_to_name = {
+  71:"python",
+  54:"cpp",    // make sure these are keys in 
+  62:"java",
+};
+// HELPER: takes in the raw output for java/c++ code and outputs in format we need ot compare 
+function parseRawOutput(rawOutput, returnType) {
+    const trimmed = rawOutput.trim();
+    
+    // handle different return types
+    if (returnType === 'int[]' || returnType === 'number[]') {
+        // "1 0" -> [1, 0]
+        return trimmed.split(' ').map(x => parseInt(x));
+    } else if (returnType === 'double[]' || returnType === 'float[]') {
+        // "1.5 2.7" -> [1.5, 2.7]
+        return trimmed.split(' ').map(x => parseFloat(x));
+    } else if (returnType === 'string[]') {
+        // "hello world" -> ["hello", "world"]
+        return trimmed.split(' ');
+    } else if (returnType === 'int' || returnType === 'number') {
+        // "42" -> 42
+        return parseInt(trimmed);
+    } else if (returnType === 'double' || returnType === 'float') {
+        // "3.14" -> 3.14
+        return parseFloat(trimmed);
+    } else if (returnType === 'string') {
+        // "hello" -> "hello"
+        return trimmed;
+    } else if (returnType === 'boolean') {
+        // "true" -> true
+        return trimmed === 'true';
+    }
+    // try to parse as space-separated integers for arrays
+    if (trimmed.includes(' ')) {
+        return trimmed.split(' ').map(x => parseInt(x));
+    }
+    // single value otuptu
+    return parseInt(trimmed) || trimmed;
+}
+
 /* 
 This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component
 */
@@ -163,10 +242,11 @@ router.post("/submission", async (req, res) => {
         const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "testcases" }, }); // this query is slowing down application for every submission, so use caching
         
         // 🎯 Generate Executable Code: first get the code ready to be sent to judge0-api for every testcase, cause its the same code sent for every testcase
+        console.log("languageId: ", languageId);
         const language_name = getLanguageName(languageId);  // get the name of the language from its id
         // wrap the code userCode-template with input parsing, output printing, etc to its runnable
         const completeWrappedCode = codeWrappers[language_name](match.problem, sourceCode); 
-        console.log("Complete Wrapped code being sent to Judge0:", completeWrappedCode);
+        console.log("Complete Wrapped code being sent to Judge0:\n", completeWrappedCode);
 
         
         // few global variables relating to the entire submission not just a single local testcase
@@ -192,10 +272,19 @@ router.post("/submission", async (req, res) => {
             console.log("======Processing a testcase=====: ", cur_testcase.input);
             
 
-            // make the testcase input into structured json
-            let testcase_case_input_json = JSON.stringify(cur_testcase.input); 
+            
+            let stdin;
+            if (language_id_to_name[languageId] == "python") {
+                // make the testcase input into structured json for python
+                stdin_input = JSON.stringify(cur_testcase.input);  
+            } else {
+                // for java and cpp the api expects the stdin_input in a different format
+                stdin_input = generateStdinInput(cur_testcase, match.problem.parameters, language_id_to_name[languageId]);
+            }
+            
+
             // send request to judge0 with given wrapped code and testcase input
-            const response = await axios.post(JUDGE0_API_URL, {source_code: completeWrappedCode, stdin: testcase_case_input_json, language_id:languageId}, {headers: JUDGE0_HEADERS});
+            const response = await axios.post(JUDGE0_API_URL, {source_code: completeWrappedCode, stdin: stdin_input, language_id:languageId}, {headers: JUDGE0_HEADERS});
             console.log("API Response:", JSON.stringify(response.data, null, 2));
 
             // for every testcase set these variables for reuslt of submission tracking based on the submission-response-obj, updating output-information for every testcase
@@ -257,12 +346,21 @@ router.post("/submission", async (req, res) => {
 
             // TESTCASE OUTPUT COMPARISON WITH USER CODE OUTPUT  
             if (response.data.stdout) {
-                const userOutput = JSON.parse(response.data.stdout.trim())  // convert output into javascript object
-                const expectedOutput = cur_testcase.output;             //  temp variable get the otuptu of current testcase
+                let userOutput;
                 
-                // Convert javascript-obj into JSON string for accuracy
-                const userOutputJson = JSON.stringify(userOutput);         // convert user output into json string
-                const expectedOutputJson = JSON.stringify(expectedOutput); // convert expected output into json string
+                if (language_name === "python") {
+                    // Python outputs JSON, so parse it
+                    userOutput = JSON.parse(response.data.stdout.trim());
+                } else {
+                    // for javav/c++ output raw strings.
+                    userOutput = parseRawOutput(response.data.stdout.trim(), match.problem.return_type);
+                }
+                
+                const expectedOutput = cur_testcase.output;
+                
+                // Convert to JSON strings for comparison
+                const userOutputJson = JSON.stringify(userOutput);
+                const expectedOutputJson = JSON.stringify(expectedOutput);
                 
                 console.log("🧑 User output:", userOutputJson);
                 console.log("🤖 Expected output:", expectedOutputJson);
@@ -352,8 +450,7 @@ router.post("/submission", async (req, res) => {
         });
 
     } catch (error) { 
-        // console.error(error);
-        console.log("Error submitting code:" + error);
+        console.log("Error submitting code: " + error);
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 
@@ -407,7 +504,6 @@ function formatSubmissionJudge0Error(res) {
 const getLanguageName = (languageId) => {
     const languageMap = {
         71: 'python',
-        63: 'javascript', 
         54: 'cpp',
         62: 'java'
     };

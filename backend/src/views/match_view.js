@@ -430,9 +430,14 @@ router.post("/submission", async (req, res) => {
         
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
-        if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  // ✅ FIX: Add check for all testcases passed
+        if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  //  FIX: Add check for all testcases passed
             console.log("🏆 Winner found in backend submission");
-            match.winner = userID;
+            // check whose id sent thsi request that won then set the winner based on that, set the full user object on just id string
+            if (userID == match.first_player._id) {
+                match.winner = match.first_player._id; 
+            } else if (userID == match.second_player._id) {
+                match.winner = match.second_player._id; 
+            }
             found_winner = true;
         }
         

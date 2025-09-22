@@ -46,7 +46,11 @@ const MatchOutcomeInfo = ({ match_id }) => {
         <br></br>
 
         <h2>Players: {player1.username} vs. {player2.username}</h2>
-        <p> <b>Congratulations the winner is {player1.username}! </b></p>
+        {match.winner ? (
+            <p><b>Congratulations the winner is {match.winner.username}!</b></p>
+        ) : (
+            <p><b>Determining winner...</b></p>
+        )}
         <p> <b>Too bad you lost {player2.username} </b></p>
 
         <br></br>

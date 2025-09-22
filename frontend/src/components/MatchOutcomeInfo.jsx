@@ -1,75 +1,88 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { useState } from 'react';
+import { useState, useEffect } from "react";
+import axios from "axios";
 
 
 
 const MatchOutcomeInfo = ({ match_id }) => {
+
+  const [match, setMatch] = useState({});
     
-    const [player1, setPlayer1] = useState("bob123");
-    const [player2, setPlayer2] = useState("sam123");
-
-    const [player1Time, setPlayer1Time] = useState(23);
-    const [player2Time, setPlayer2Time] = useState(32);
-
-    const [player1TimeComplexity, setPlayer1TimeComplexity] = useState("O(n^2)");
-    const [player2TimeComplexity, setPlayer2TimeComplexity] = useState("O(nlog(n))");
-
-    // player 1 variables
-    const [player1Submissions, setPlayer1Submissions] = useState(0);
-    const [player1CurTestcasesPassed, setPlayer1CurTestcasesPassed] = useState(0);
-    const [player1MaxTestcasesPassed, setPlayer1MaxTestcasesPassed] = useState(0);
-    // player 2 variables
-    const [player2Submissions, setPlayer2Submissions] = useState(0);
-    const [player2CurTestcasesPassed, setPlayer2CurTestcasesPassed] = useState(0);
-    const [player2MaxTestcasesPassed, setPlayer2MaxTestcasesPassed] = useState(0);
+  const [player1, setPlayer1] = useState("player1 name hasn't been set yet");
+  const [player2, setPlayer2] = useState("player2 hasn't been set yet");
 
 
-    // players code
-    const [player1Code, setPlayer1Code] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
-    const [player2Code, setPlayer2Code] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
-  
-  
-    return (
-      <div>
-          <h1>Match Outcome Info for: {match_id}</h1>
-          <br></br>
+  const [player1TimeComplexity, setPlayer1TimeComplexity] = useState("O(n^2)");
+  const [player2TimeComplexity, setPlayer2TimeComplexity] = useState("O(nlog(n))");
 
-          <h2>Players: {player1} vs. {player2}</h2>
-          <p>Congratulations the winner is {player1}!</p>
-          <p>Too bad you lost {player2}</p>
 
-          <br></br>
+  // players code
+  const [player1Code, setPlayer1Code] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
+  const [player2Code, setPlayer2Code] = useState("nums = list(map(int, input().split()))\ntarget = int(input())\n\ndef two_sum(nums, target):\n    lookup = {}\n    for i, num in enumerate(nums):\n        diff = target - num\n        if diff in lookup:\n            return [lookup[diff], i]\n        lookup[num] = i\n\nresult = two_sum(nums, target)\nprint(result)");
 
-          <h3>{player1} Stats:</h3>
-          <p>Submissions: {player1Submissions}</p>
-          <p>Ending Testcases Passed: {player1CurTestcasesPassed}</p>
-          <p>Maximum Testcases Passed in match: {player1MaxTestcasesPassed}</p>
-          <p>Time: {player1Time} minutes.</p>
-
-          <br></br>
-
-          <h3>{player2} Stats:</h3>
-          <p>Submissions: {player2Submissions}</p>
-          <p>Ending Testcases Passed: {player2CurTestcasesPassed}</p>
-          <p>Maximum Testcases Passed in match: {player2MaxTestcasesPassed}</p>
-          <p>Time: {player2Time} minutes.</p>
-
-          <br></br>
-
-          <h3>{player1} Code:</h3>
-          <p>{player1Code}</p>
-          <p>Time complexity: {player1TimeComplexity}</p>
-
-          <br></br>
-
-          <h3>{player2}: Code:</h3>
-          <p>{player2Code}</p>
-          <p>Time complexity: {player2TimeComplexity}</p>
-
-          
-      </div>
-    );
+  const fetchMatch = async (event) => {
+    try {
+      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {});  // string version language. send some payload language with it
+      const matchData = response.data.match;
+      setMatch(matchData);
+      setPlayer1(response.data.match.first_player);
+      setPlayer2(response.data.match.second_player);
+      console.log("get-match-id: ",  response.data.match);
+      console.log("set-match-id: ", match._id);
+    } catch (error) {
+      // console.error(error.response.data.message);  
     }
+  };
+
+  useEffect(() => {
+    fetchMatch();
+
+  }, [match_id]);
+
+
+  return (
+    <div>
+        <h1>Match Outcome Info for: {match._id}</h1>
+        <br></br>
+
+        <h2>Players: {player1.username} vs. {player2.username}</h2>
+        <p> <b>Congratulations the winner is {player1.username}! </b></p>
+        <p> <b>Too bad you lost {player2.username} </b></p>
+
+        <br></br>
+
+        <h3>{player1.username} Stats:</h3>
+        <p>Submissions: {match.first_player_submissions}</p>
+        <p>Ending Testcases Passed: {match.first_player_latest_testcases_passed}</p>
+        <p>Maximum Testcases Passed in match: {match.first_player_max_testcases_passed}</p>
+        <p>Time: TBD minutes.</p>
+
+        <br></br>
+
+        <h3>{player2.username} Stats:</h3>
+        <p>Submissions: {match.second_player_submissions}</p>
+        <p>Ending Testcases Passed: {match.second_player_latest_testcases_passed}</p>
+        <p>Maximum Testcases Passed in match: {match.second_player_max_testcases_passed}</p>
+        <p>Time: TBD minutes.</p>
+
+        <br></br>
+
+        <h3>{player1.username} Code:</h3>
+        <p>TBD</p>
+        <p>Time complexity: TBD</p>
+
+        <br></br>
+
+        <h3>{player2.username}: Code:</h3>
+        <p>TBD</p>
+        <p>Time complexity: TBD</p>
+
+        
+    </div>
+  );
+
+
+}
     
     
 export default MatchOutcomeInfo;

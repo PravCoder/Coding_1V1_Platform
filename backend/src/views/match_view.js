@@ -91,10 +91,10 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
      const { language } = req.body;   //  get from body from client
 
     try {
-        const match = await MatchModel.findById(match_id).populate("problem"); // fill in problen attribute not just its id
+        const match = await MatchModel.findById(match_id).populate("problem").populate("first_player").populate("second_player").populate("winner"); // fill in problem attribute not just its id
 
         if (!match) {
-        return res.status(404).json({ message: "Match not found" });
+            return res.status(404).json({ message: "Match not found" });
         }
 
         console.log("GET-MATCH-PROBLEM VIEW");
@@ -272,7 +272,7 @@ router.post("/submission", async (req, res) => {
             console.log("======Processing a testcase=====: ", cur_testcase.input);
             
 
-            
+            // the input we pass into the api
             let stdin;
             if (language_id_to_name[languageId] == "python") {
                 // make the testcase input into structured json for python

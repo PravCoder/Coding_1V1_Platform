@@ -14,18 +14,11 @@ const socket = io.connect("http://localhost:3001");
 const languageOptions = {
   python: 71,
   cpp: 54,    // make sure these are keys in 
-  java: 62,
+  // java: 62,
 };
 
 
 
-/* 
-Custom input has to be like:
-1 2 3
-9
-
-Code: nums = list(map(int, input().split())) 
-*/
 
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
@@ -169,7 +162,7 @@ const CodeEditor = ({ match_id }) => {
       // other-user presses submit and they pass all testcases, we should redirect ourselves to
       console.log("found winner: ", data.found_winner); 
       if (data.found_winner == true) {
-        console.log("redirect to amtch outcome because other person won")
+        console.log("redirect to match outcome because other person won")
         navigate(`/match-outcome/${match_id}`);
       }
     };

@@ -27,8 +27,14 @@ const HomePage = () => {
   const toggleStreaming = () => {
     const newStreamingState = !isStreaming;
     setIsStreaming(newStreamingState);
-    if (!newStreamingState) {
+    if (newStreamingState) {
+      // Streaming enabled → automatically enable video and explanation
+      setIsVideoEnabled(true);
+      setIsSpeechToText(true);
+    } else {
+      // Streaming disabled → automatically disable video and explanation
       setIsVideoEnabled(false);
+      setIsSpeechToText(false);
     }
   };
 
@@ -38,9 +44,8 @@ const HomePage = () => {
   };
 
   const toggleVideo = () => {
-    if (isStreaming) {
-      setIsVideoEnabled(!isVideoEnabled);
-    }
+    setIsVideoEnabled(!isVideoEnabled);
+    
   };
 
   useEffect(() => {
@@ -85,46 +90,44 @@ const HomePage = () => {
       <div className="flex justify-center items-center flex-1">
         <div className='bg-[#2B2B2D] bg-opacity-50 shadow-lg rounded-lg p-8 w-96 flex flex-col space-y-6'>
           <h1 className="text-white text-2xl text-center font-bold">BATTLE</h1>
+
           {/* Toggle Switches */}
           <div className="flex flex-col space-y-4">
             {/* Streaming Toggle */}
-            <div className="flex flex-col space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <FaVideo className="text-white text-lg" />
-                  <span className="text-white">Streaming</span>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input
-                    type="checkbox"
-                    className="sr-only peer"
-                    checked={isStreaming}
-                    onChange={toggleStreaming}
-                  />
-                  <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-700"></div>
-                </label>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <FaVideo className="text-white text-lg" />
+                <span className="text-white">Streaming</span>
               </div>
-              
-              {/* Video Checkbox - Only shown when streaming is on */}
-              {isStreaming && (
-                <div className="flex items-center space-x-2 ml-6">
-                  <label className="flex items-center space-x-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="form-checkbox h-4 w-4 text-red-700 rounded focus:ring-red-700"
-                      checked={isVideoEnabled}
-                      onChange={toggleVideo}
-                    />
-                    <div className="flex items-center space-x-1">
-                      <FaCamera className="text-white text-sm" />
-                      <span className="text-white text-sm">Enable Video</span>
-                    </div>
-                  </label>
-                </div>
-              )}
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={isStreaming}
+                  onChange={toggleStreaming}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-700"></div>
+              </label>
             </div>
 
-            {/* Speech-to-Text Toggle */}
+            {/* Video Toggle */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <FaCamera className="text-white text-lg" />
+                <span className="text-white">Enable Video</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={isVideoEnabled}
+                  onChange={toggleVideo}
+                />
+                <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-700"></div>
+              </label>
+            </div>
+
+            {/* Explanation Match Toggle */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <FaMicrophone className="text-white text-lg" />
@@ -163,6 +166,7 @@ const HomePage = () => {
       </div>
     </div>
   );
+
 }
   
 export default HomePage;

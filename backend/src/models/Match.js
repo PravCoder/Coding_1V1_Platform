@@ -43,10 +43,10 @@ const MatchSchema = new mongoose.Schema({
     // used to connect sockets into a room, room id
     match_str: {type: String, required:false, default: ""},
 
-    // amount of time match took place in seconds, for timer counting down
-    duration: { type: Number, default: 1800 },
+    // amount of time match took place in MM:SS, for timer counting down, not always equal to TIME_PER_MATCH in index.js, if a player solves before timeout thats the duration of the match
+    duration: { type: String, default: "0:00" },
 
-    // by way of win
+    // by way of win. "submission"=player solved it before time ran out, "timeout-equal"=both players couldnt solve it and had equal testcases passed, "timeout-testcases"=player own because we had the most testcases passed but no solution
     win_condition: {type: String, required:false, default: "regular"},  
 
     // store final submissions of both players to display on match outcome page
@@ -56,7 +56,7 @@ const MatchSchema = new mongoose.Schema({
     first_player_lang: { type: String, default: "python" },
     second_player_lang: { type: String, default: "python" },
 
-})
+}, { timestamps: true })        // make sure timestamps are enbaled so we can calcualte match duration using when it was created
 
 const MatchModel = mongoose.model("Match", MatchSchema);
 module.exports = MatchModel;

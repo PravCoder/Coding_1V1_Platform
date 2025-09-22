@@ -53,13 +53,14 @@ const MatchOutcomeInfo = ({ match_id }) => {
         )}
         <p> <b>Too bad you lost {player2.username} </b></p>
 
+        <p><b>TIME: {match.duration}</b></p>
+
         <br></br>
 
         <h3>{player1.username} Stats:</h3>
         <p>Submissions: {match.first_player_submissions}</p>
         <p>Ending Testcases Passed: {match.first_player_latest_testcases_passed}</p>
         <p>Maximum Testcases Passed in match: {match.first_player_max_testcases_passed}</p>
-        <p>Time: TBD minutes.</p>
 
         <br></br>
 
@@ -67,7 +68,6 @@ const MatchOutcomeInfo = ({ match_id }) => {
         <p>Submissions: {match.second_player_submissions}</p>
         <p>Ending Testcases Passed: {match.second_player_latest_testcases_passed}</p>
         <p>Maximum Testcases Passed in match: {match.second_player_max_testcases_passed}</p>
-        <p>Time: TBD minutes.</p>
 
         <br></br>
 

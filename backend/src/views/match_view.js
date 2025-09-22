@@ -436,6 +436,7 @@ router.post("/submission", async (req, res) => {
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
         if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  //  FIX: Add check for all testcases passed
             console.log("🏆 Winner found in backend submission");
+            
             // check whose id sent thsi request that won then set the winner based on that, set the full user object on just id string
             if (userID == match.first_player._id) {
                 match.winner = match.first_player._id; 
@@ -444,6 +445,8 @@ router.post("/submission", async (req, res) => {
             }
             found_winner = true;
         }
+        // set how long the match took based on when it was created and now when it ended
+        match.duration = getMatchDuration(match); 
         
         // FIX: SINGLE SAVE OPERATION AT THE END (instead of multiple saves)
         await match.save();
@@ -476,6 +479,20 @@ const JUDGE0_HEADERS = {
   'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,
   'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
 };
+
+// use when match.createdAt when it was created so we can calcualte match duration
+function getMatchDuration(match) {
+    const matchEndTime = Date.now();
+    const matchStartTime = new Date(match.createdAt).getTime();
+    const durationMs = matchEndTime - matchStartTime;
+    
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+
+    console.log("match.createdAt: ", match.createdAt);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+}
 
 function formatSubmissionJudge0Error(res) {
     const {

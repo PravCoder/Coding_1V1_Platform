@@ -72,14 +72,14 @@ const MatchOutcomeInfo = ({ match_id }) => {
         <br></br>
 
         <h3>{player1.username} Code:</h3>
-        <p>TBD</p>
-        <p>Time complexity: TBD</p>
+        <p><b>{match.first_player_lang}</b></p>
+        <p>{match.first_player_final_code}</p>
 
         <br></br>
 
         <h3>{player2.username}: Code:</h3>
-        <p>TBD</p>
-        <p>Time complexity: TBD</p>
+        <p><b>{match.second_player_lang}</b></p>
+        <p>{match.second_player_final_code}</p>
 
         
     </div>

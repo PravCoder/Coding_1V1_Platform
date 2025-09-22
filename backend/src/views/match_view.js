@@ -88,7 +88,7 @@ Every time page is refreshed this is bottle neck. So cache match.
 */
 router.post("/get-match-problem/:match_id", async (req, res) => {  // post-request because it has body of the langaugeID
     const { match_id } = req.params;
-     const { language } = req.body;   //  get from body from client
+    const { language } = req.body;   //  get from body from client
 
     try {
         const match = await MatchModel.findById(match_id).populate("problem").populate("first_player").populate("second_player").populate("winner"); // fill in problem attribute not just its id
@@ -100,7 +100,7 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
         console.log("GET-MATCH-PROBLEM VIEW");
         console.log("new language: ", language);
         console.log("problem params: ", match.problem.parameters);
-        // BUG: problem parameters where each param has a type & name, the type is only in one language python in the db, so the data_type_system is not recognizing it
+        // BUG (solved): problem parameters where each param has a type & name, the type is only in one language python in the db, so the data_type_system is not recognizing it
 
         // get the dynamic template for this problem and return it to be displayed to user in CodeEditor.jsx component
         let template = null; 
@@ -417,11 +417,15 @@ router.post("/submission", async (req, res) => {
             if (num_testcases_passed > match.first_player_max_testcases_passed) {
                 match.first_player_max_testcases_passed = num_testcases_passed;
             }
+            match.first_player_final_code = sourceCode;     // stores the players code for this submission to display in match outcome
+            match.first_player_lang = getLanguageName(languageId); // stores the langauge this player used for this submission
             // console.log("After: submissions=" + match.first_player_submissions + ", latest=" + match.first_player_latest_testcases_passed + ", max=" + match.first_player_max_testcases_passed);
         } else if (userID == match.second_player) {  // FIX: Use else if to prevent both blocks from running
             // console.log("Before: submissions=" + match.second_player_submissions + ", latest=" + match.second_player_latest_testcases_passed + ", max=" + match.second_player_max_testcases_passed);
             match.second_player_submissions++;
             match.second_player_latest_testcases_passed = num_testcases_passed;
+            match.second_player_final_code = sourceCode;     // stores the players code for this submission to display in match outcome
+            match.second_player_lang = getLanguageName(languageId); // stores the langauge this player used for this submission
             if (num_testcases_passed > match.second_player_max_testcases_passed) {
                 match.second_player_max_testcases_passed = num_testcases_passed;
             }

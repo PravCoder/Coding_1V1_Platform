@@ -48,6 +48,14 @@ const MatchSchema = new mongoose.Schema({
 
     // by way of win
     win_condition: {type: String, required:false, default: "regular"},  
+
+    // store final submissions of both players to display on match outcome page
+    first_player_final_code: { type: String, default: "" },
+    second_player_final_code: { type: String, default: "" },
+    // stores the languages that both players wrote their solution in
+    first_player_lang: { type: String, default: "python" },
+    second_player_lang: { type: String, default: "python" },
+
 })
 
 const MatchModel = mongoose.model("Match", MatchSchema);

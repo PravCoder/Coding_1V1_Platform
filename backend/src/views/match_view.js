@@ -17,6 +17,8 @@ const typeSystem = require('../code_execution_system/data_type_system.js');
 const templateGenerators = require('../code_execution_system/template_generators');
 const codeWrappers = require('../code_execution_system/code_wrapper_generators.js');
 const generateOutputHandling = require('../code_execution_system/output_handling.js');
+const evaluateExplanationOpenAI = require('../openai/evaluate_explanation.js');
+
 
 
 // create application-express-obj, obj that handles requests
@@ -235,7 +237,8 @@ router.post("/submission", async (req, res) => {
     console.log("-----Submission Start Processing Testcases-----:");
 
     // sourceCode here is what the user sees in the code-editor, that they submitted
-    const {sourceCode, languageId, match_id, userID} = req.body;
+    const {sourceCode, languageId, match_id, userID, explanation_transcript} = req.body;
+    console.log("Explanation after submission: ", explanation_transcript);
 
     try {
 
@@ -430,6 +433,26 @@ router.post("/submission", async (req, res) => {
                 match.second_player_max_testcases_passed = num_testcases_passed;
             }
             // console.log("After: submissions=" + match.second_player_submissions + ", latest=" + match.second_player_latest_testcases_passed + ", max=" + match.second_player_max_testcases_passed);
+        }
+
+        // if its an explanation match
+        console.log("match is ", match.type);
+        if (match.type === "explanation") {
+            // stores the json of the explanation ratings
+            let explanation_evaluation = null;
+            // if there is a explanation and its length is zero
+            if (explanation_transcript && explanation_transcript.trim().length > 0) {
+                // call func that takes in problem, code, explanation and sends request to openai for rating
+                explanation_evaluation = await evaluateExplanationOpenAI(
+                    match.problem,
+                    sourceCode,
+                    explanation_transcript,
+                    language_name
+                );
+                console.log("📊 Explanation evaluation:", explanation_evaluation);
+            } else {
+                explanation_evaluation = {}
+            }
         }
         
 

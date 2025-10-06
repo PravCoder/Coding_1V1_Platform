@@ -272,7 +272,10 @@ const CodeEditor = ({ match_id }) => {
     console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
     try {
-      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], userID:getCurrentUser()});
+      console.log("transcript before sending: ", explanationTranscript);
+      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
+                userID:getCurrentUser(), explanation_transcript:explanationTranscript}); // pass in explanation transcript after submission to route
+
       console.log("match-id: " + match_id);
       console.log("submission results: " + result.data.fir + " out: " + output);
       setOutputInfo(result.data.output_information);
@@ -315,6 +318,7 @@ const CodeEditor = ({ match_id }) => {
     }
   };
 
+  // use-effect for getting the speech -> text for explanation match
   useEffect(() => {
     if (matchType !== "explanation") {
       if (recognitionRef.current) recognitionRef.current.stop();

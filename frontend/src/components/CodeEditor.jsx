@@ -32,12 +32,16 @@ const CodeEditor = ({ match_id }) => {
   const [isCountdownActive, setIsCountdownActive] = useState(false);
   const [outputInfo, setOutputInfo] = useState({});
   const [matchType, setMatchType] = useState({});   // either regular or explanation
-  const [explanationTranscript, setExplanationTranscript] = useState("");
   const recognitionRef = useRef(null);  // if its a explanation match use this
   const [isMatchStarted, setIsMatchStarted] = useState(() => {
     return !!localStorage.getItem('match_start_time');
   });
   const [shouldRestartTimer, setShouldRestartTimer] = useState(false);
+
+  // variables for explanation match
+  const [explanationTranscript, setExplanationTranscript] = useState("");
+  const [isMicrophoneOn, setIsMicrophoneOn] = useState(false);    // to toggle the microphone, default is on when match starts. 
+  const [microphoneError, setMicrophoneError] = useState(null);   // if there is a microphone error
   
   
   // Initialize matchStartTime from localStorage or create new one
@@ -113,6 +117,7 @@ const CodeEditor = ({ match_id }) => {
     editor.focus();
   };
 
+  // TO GET THE PROBLEM FOR THIS MATCH
   const fetchProblem = async (event) => {
     try {
       // this is slowing down application have to fetch problem, every time so store match in cache. 
@@ -318,58 +323,182 @@ const CodeEditor = ({ match_id }) => {
     }
   };
 
-  // use-effect for getting the speech -> text for explanation match
+
+  // changes the microphone from on to off vice versa.
+  const toggleMicrophone = async () => {
+    if (!isMicrophoneOn) {
+      // Turning ON - check permissions first
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop the test stream immediately
+        stream.getTracks().forEach(track => track.stop());
+        
+        // Permission granted, turn on microphone
+        setIsMicrophoneOn(true);
+        setMicrophoneError(null);
+        console.log("✅ Microphone permission granted");
+      } catch (error) {
+        console.error("Microphone permission error:", error);
+        if (error.name === 'NotAllowedError') {
+          setMicrophoneError("Microphone access denied. Please allow microphone access in your browser settings.");
+        } else if (error.name === 'NotFoundError') {
+          setMicrophoneError("No microphone found. Please connect a microphone.");
+        } else {
+          setMicrophoneError("Could not access microphone. Please check your settings.");
+        }
+        setIsMicrophoneOn(false);
+      }
+    } else {
+      // Turning OFF - just stop
+      setIsMicrophoneOn(false);
+      setMicrophoneError(null);
+    }
+  };
+
+  // SPEECH->TEXT USEFFECT:
   useEffect(() => {
-    if (matchType !== "explanation") {
-      if (recognitionRef.current) recognitionRef.current.stop();
+    // Only initialize if it's an explanation match AND microphone is turned on
+    if (matchType !== "explanation" || !isMicrophoneOn) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.log("Error stopping recognition:", e);
+        }
+        recognitionRef.current = null;
+      }
       return;
     }
 
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("Speech Recognition API not supported in this browser");
+      setMicrophoneError("Speech Recognition API not supported in this browser");
       return;
     }
+
+    let isActive = true; // Flag to prevent restart loops
 
     const recognition = new SpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = "en-US";
+    recognition.maxAlternatives = 1;
 
     recognition.onresult = (event) => {
-      let interimTranscript = "";
       let newFinalText = "";
 
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const transcriptPart = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          newFinalText += transcriptPart + " ";  // add the current speech to everything that was said before
-        } else {
-          interimTranscript += transcriptPart;
+          newFinalText += transcriptPart + " ";
         }
       }
 
       if (newFinalText) {
+        console.log("📝 Captured speech:", newFinalText);
         setExplanationTranscript(prev => prev + newFinalText);
+        setMicrophoneError(null); // Clear error on successful speech
       }
-
-      console.log("Live transcript:", explanationTranscript);  // current transcript of what was just said, this might still lag one update due to state async nature
     };
 
     recognition.onerror = (event) => {
-      console.error("Speech recognition error", event.error);
+      console.error("Speech recognition error:", event.error);
+      
+      // Handle different error types
+      switch(event.error) {
+        case 'no-speech':
+          // Don't show error for no-speech, just keep listening
+          console.log("No speech detected, still listening...");
+          // Don't set isActive to false, keep listening
+          break;
+        case 'audio-capture':
+          console.log("Audio capture issue - microphone may be in use by another app");
+          setMicrophoneError("Microphone unavailable. Check if another app is using it.");
+          setIsMicrophoneOn(false);
+          isActive = false;
+          break;
+        case 'not-allowed':
+          console.log("Microphone permission denied");
+          setMicrophoneError("Microphone access denied. Click the mic button to grant permission.");
+          setIsMicrophoneOn(false);
+          isActive = false;
+          break;
+        case 'network':
+          console.log("Network error during speech recognition");
+          setMicrophoneError("Network error occurred. Please check your connection.");
+          // Don't disable mic, might be temporary
+          break;
+        case 'aborted':
+          // User stopped or another interruption
+          console.log("Speech recognition aborted");
+          isActive = false;
+          break;
+        case 'service-not-allowed':
+          console.log("Speech recognition service not allowed");
+          setMicrophoneError("Speech recognition not allowed. Check browser settings.");
+          setIsMicrophoneOn(false);
+          isActive = false;
+          break;
+        default:
+          console.log(`Unknown speech recognition error: ${event.error}`);
+          setMicrophoneError(`Speech recognition error: ${event.error}`);
+      }
     };
 
-    recognition.start();
-    recognitionRef.current = recognition;
+    recognition.onend = () => {
+      console.log("Recognition ended");
+      // Only restart if still active and mounted
+      if (isActive && isMicrophoneOn && matchType === "explanation") {
+        console.log("Restarting recognition...");
+        setTimeout(() => {
+          try {
+            if (recognitionRef.current) {
+              recognition.start();
+            }
+          } catch (error) {
+            console.error("Error restarting recognition:", error);
+          }
+        }, 100); // Small delay to prevent rapid restart loops
+      }
+    };
 
-    return () => recognition.stop();
-  }, [matchType]);
+    recognition.onstart = () => {
+      console.log("🎤 Speech recognition started");
+      setMicrophoneError(null);
+    };
 
-  // just for printing the entire transcript
-  useEffect(() => {
-    console.log("Updated entire transcript:", explanationTranscript);
-  }, [explanationTranscript]);
+    const initializeRecognition = async () => {
+      try {
+        await new Promise(resolve => setTimeout(resolve, 200)); // Ensure cleanup completes
+        recognition.start();
+        recognitionRef.current = recognition;
+        console.log("Initializing speech recognition...");
+      } catch (error) {
+        console.error("Error starting recognition:", error);
+        if (error.message.includes('already started')) {
+          console.log("Recognition already running, skipping...");
+        } else {
+          setMicrophoneError("Failed to start speech recognition. Try again.");
+          setIsMicrophoneOn(false);
+        }
+      }
+    };
+
+    initializeRecognition();
+
+    return () => {
+      console.log("Cleanup: stopping recognition");
+      isActive = false; // Prevent restarts during cleanup
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          console.log("Error during cleanup:", e);
+        }
+        recognitionRef.current = null;
+      }
+    };
+  }, [matchType, isMicrophoneOn]);
 
 
   console.log("outputinfo: ", outputInfo);
@@ -442,6 +571,43 @@ const CodeEditor = ({ match_id }) => {
                 </option>
               ))}
             </select>
+            
+            {/* MICROPHONE BUTTON */}
+            {matchType === "explanation" && (
+              <div className="flex items-center space-x-2 ml-4">
+                <button 
+                  onClick={toggleMicrophone}
+                  className={`px-4 py-1 rounded text-md font-semibold flex items-center space-x-2 ${
+                    isMicrophoneOn 
+                      ? 'bg-red-600 hover:bg-red-700' 
+                      : 'bg-blue-600 hover:bg-blue-700'
+                  } text-white`}
+                  disabled={isCountdownActive}
+                >
+                  <span>{isMicrophoneOn ? '🎤 Stop Recording' : '🎤 Start Recording'}</span>
+                </button>
+                {isMicrophoneOn && (
+                  <span className="text-green-500 animate-pulse">● Recording...</span>
+                )}
+              </div>
+            )}
+
+            {/* SHOW MICROPHONE ERROS */}
+            {microphoneError && (
+              <div className="mt-2 p-2 bg-red-100 text-red-700 rounded">
+                {microphoneError}
+              </div>
+            )}
+
+            {/* SHOW TRANSCRIPT PREVIEW */}
+            {matchType === "explanation"  && explanationTranscript && (
+              <div className="mt-4 p-3 bg-[#1E1E1E] rounded border border-[#444444]">
+                <h3 className="text-sm font-semibold mb-2">Your Explanation Transcript:</h3>
+                <p className="text-xs text-[#CCCCCC] max-h-20 overflow-y-auto">
+                  {explanationTranscript}
+                </p>
+              </div>
+            )}
             <Editor
               className="mt-4 rounded"
               height="500px"

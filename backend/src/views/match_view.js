@@ -234,7 +234,7 @@ function parseRawOutput(rawOutput, returnType) {
 This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component
 */
 router.post("/submission", async (req, res) => {
-    console.log("-----Submission Start Processing Testcases-----:");
+    console.log("\n-----Submission Start Processing Testcases-----:");
 
     // sourceCode here is what the user sees in the code-editor, that they submitted
     const {sourceCode, languageId, match_id, userID, explanation_transcript} = req.body;
@@ -450,10 +450,21 @@ router.post("/submission", async (req, res) => {
                     language_name
                 );
                 console.log("📊 Explanation evaluation:", explanation_evaluation);
+                
+                // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
+                if (userID == match.first_player) {
+                    match.first_player_explanation_transcript = explanation_transcript || "";
+                    match.first_player_explanation_evaluation = explanation_evaluation;
+                } else if (userID == match.second_player) {
+                    match.second_player_explanation_transcript = explanation_transcript || "";
+                    match.second_player_explanation_evaluation = explanation_evaluation;
+                }
             } else {
+                console.log("")
                 explanation_evaluation = {}
             }
         }
+
         
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this

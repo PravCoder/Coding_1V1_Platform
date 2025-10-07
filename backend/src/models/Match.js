@@ -56,6 +56,12 @@ const MatchSchema = new mongoose.Schema({
     first_player_lang: { type: String, default: "python" },
     second_player_lang: { type: String, default: "python" },
 
+    // for explanation match store the string of the players explanation, and the json-object returned by openai that is the evlaution with keys correctness, clarity, completeness each with keys score & feedback
+    first_player_explanation_transcript: { type: String, default: "" },
+    first_player_explanation_evaluation: { type: Object, default: {} },
+    second_player_explanation_transcript: { type: String, default: "" },
+    second_player_explanation_evaluation: { type: Object, default: {} },
+
 }, { timestamps: true })        // make sure timestamps are enbaled so we can calcualte match duration using when it was created
 
 const MatchModel = mongoose.model("Match", MatchSchema);

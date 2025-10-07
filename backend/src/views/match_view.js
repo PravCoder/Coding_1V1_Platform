@@ -410,7 +410,7 @@ router.post("/submission", async (req, res) => {
         }
 
 
-        //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
+        // compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
         // FIX: CONSOLIDATED STATS UPDATE (SINGLE PLACE FOR SUCCESS/FAILURE - NO DUPLICATION)
         let found_winner = false;
         if (userID == match.first_player) {
@@ -440,7 +440,7 @@ router.post("/submission", async (req, res) => {
         if (match.type === "explanation") {
             // stores the json of the explanation ratings
             let explanation_evaluation = null;
-            // if there is a explanation and its length is zero
+            // if there is a explanation and it has come content in it
             if (explanation_transcript && explanation_transcript.trim().length > 0) {
                 // call func that takes in problem, code, explanation and sends request to openai for rating
                 explanation_evaluation = await evaluateExplanationOpenAI(
@@ -450,15 +450,32 @@ router.post("/submission", async (req, res) => {
                     language_name
                 );
                 console.log("📊 Explanation evaluation:", explanation_evaluation);
+
+                // compute testcases percentage = get the testcases passed percentage and how much that is of the total 50% for the testcases portion, equal to the number of points they got out of the 50% testcases section
+                let testcases_percentage = (num_testcases_passed / output_information.total_testcases) * 50; 
+                // compute explanation percentage = get the explaantion rating percentage which is their total score across all explanation categories by the total avaible explanation points and how much that is of 50T
+                let explanation_percentage = (explanation_evaluation["total_score"] /(10+5+5)) * 50;
+
+                console.log("📈testcases_percentage of 50%: ", testcases_percentage);
+                console.log("📈explanation_percentage of 50%: ", explanation_percentage);
+                console.log("📈total_score of 100%: ", testcases_percentage+explanation_percentage);
                 
                 // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
+                // we update their explanation + testcases scores after eveyr submission
                 if (userID == match.first_player) {
                     match.first_player_explanation_transcript = explanation_transcript || "";
                     match.first_player_explanation_evaluation = explanation_evaluation;
+                    match.first_player_testcases_score = testcases_percentage;                      // update testcases percentage
+                    match.first_player_explanation_score = explanation_percentage;                  // update explanation percentage
+                    match.first_player_total_score = testcases_percentage+explanation_percentage;   // update total percentage
                 } else if (userID == match.second_player) {
                     match.second_player_explanation_transcript = explanation_transcript || "";
                     match.second_player_explanation_evaluation = explanation_evaluation;
+                    match.second_player_testcases_score = testcases_percentage;
+                    match.second_player_explanation_score = explanation_percentage;
+                    match.second_player_total_score = testcases_percentage+explanation_percentage;
                 }
+
             } else {
                 console.log("")
                 explanation_evaluation = {}

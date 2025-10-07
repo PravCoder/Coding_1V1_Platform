@@ -59,8 +59,15 @@ const MatchSchema = new mongoose.Schema({
     // for explanation match store the string of the players explanation, and the json-object returned by openai that is the evlaution with keys correctness, clarity, completeness each with keys score & feedback
     first_player_explanation_transcript: { type: String, default: "" },
     first_player_explanation_evaluation: { type: Object, default: {} },
+    first_player_total_score: { type:Number, required:false, min:0, default: 0},    // percentage 0-100, where 50% is how many testcases they passed, 50% is the rating of the explanation
+    first_player_testcases_score: { type:Number, required:false, min:0, default: 0},    // out of 50 points
+    first_player_explanation_score: { type:Number, required:false, min:0, default: 0},  // out of 50 points
+
     second_player_explanation_transcript: { type: String, default: "" },
     second_player_explanation_evaluation: { type: Object, default: {} },
+    second_player_total_score: { type:Number, required:false, min:0, default: 0},    // percentage 0-100, where 50% is how many testcases they passed, 50% is the rating of the explanation
+    second_player_testcases_score: { type:Number, required:false, min:0, default: 0},    // out of 50 points
+    second_player_explanation_score: { type:Number, required:false, min:0, default: 0},  // out of 50 points
 
 }, { timestamps: true })        // make sure timestamps are enbaled so we can calcualte match duration using when it was created
 

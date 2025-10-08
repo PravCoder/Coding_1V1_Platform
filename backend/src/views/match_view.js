@@ -99,9 +99,9 @@ router.post("/get-match-problem/:match_id", async (req, res) => {  // post-reque
             return res.status(404).json({ message: "Match not found" });
         }
 
-        console.log("GET-MATCH-PROBLEM VIEW");
-        console.log("new language: ", language);
-        console.log("problem params: ", match.problem.parameters);
+        // console.log("GET-MATCH-PROBLEM VIEW");
+        // console.log("new language: ", language);
+        // console.log("problem params: ", match.problem.parameters);
         // BUG (solved): problem parameters where each param has a type & name, the type is only in one language python in the db, so the data_type_system is not recognizing it
 
         // get the dynamic template for this problem and return it to be displayed to user in CodeEditor.jsx component
@@ -437,10 +437,10 @@ router.post("/submission", async (req, res) => {
 
         // if its an explanation match
         console.log("match is ", match.type);
+        // stores the json of the explanation ratings
+        let explanation_evaluation = null;
         if (match.type === "explanation") {
-            // stores the json of the explanation ratings
-            let explanation_evaluation = null;
-            // if there is a explanation and it has come content in it
+            // if there is a explanation and it has come content in it: get their ratings from openai
             if (explanation_transcript && explanation_transcript.trim().length > 0) {
                 // call func that takes in problem, code, explanation and sends request to openai for rating
                 explanation_evaluation = await evaluateExplanationOpenAI(
@@ -449,46 +449,63 @@ router.post("/submission", async (req, res) => {
                     explanation_transcript,
                     language_name
                 );
-                console.log("📊 Explanation evaluation:", explanation_evaluation);
+                console.log("\n📊 Explanation evaluation:", explanation_evaluation);
 
-                // compute testcases percentage = get the testcases passed percentage and how much that is of the total 50% for the testcases portion, equal to the number of points they got out of the 50% testcases section
-                let testcases_percentage = (num_testcases_passed / output_information.total_testcases) * 50; 
-                // compute explanation percentage = get the explaantion rating percentage which is their total score across all explanation categories by the total avaible explanation points and how much that is of 50T
-                let explanation_percentage = (explanation_evaluation["total_score"] /(10+5+5)) * 50;
-
-                console.log("📈testcases_percentage of 50%: ", testcases_percentage);
-                console.log("📈explanation_percentage of 50%: ", explanation_percentage);
-                console.log("📈total_score of 100%: ", testcases_percentage+explanation_percentage);
-                
-                // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
-                // we update their explanation + testcases scores after eveyr submission
-                if (userID == match.first_player) {
-                    match.first_player_explanation_transcript = explanation_transcript || "";
-                    match.first_player_explanation_evaluation = explanation_evaluation;
-                    match.first_player_testcases_score = testcases_percentage;                      // update testcases percentage
-                    match.first_player_explanation_score = explanation_percentage;                  // update explanation percentage
-                    match.first_player_total_score = testcases_percentage+explanation_percentage;   // update total percentage
-                } else if (userID == match.second_player) {
-                    match.second_player_explanation_transcript = explanation_transcript || "";
-                    match.second_player_explanation_evaluation = explanation_evaluation;
-                    match.second_player_testcases_score = testcases_percentage;
-                    match.second_player_explanation_score = explanation_percentage;
-                    match.second_player_total_score = testcases_percentage+explanation_percentage;
-                }
-
+            // if the player didn't provide an explanation: compute their scores of 0 and don't send to openai
             } else {
-                console.log("")
-                explanation_evaluation = {}
+                explanation_evaluation = {
+                    correctness: {
+                        score: 0,
+                        feedback: "No explanation of code was provided"
+                    },
+                    clarity: {
+                        score: 0,
+                        feedback: "No explanation of code was provided"
+                    },
+                    completeness: {
+                        score: 0,
+                        feedback: "No explanation of code was provided"
+                    },
+                    total_score: 0,
+                    overall_feedback: "No explanation of code was provided"
+                };
+                console.log("\n📊 No explaantion was provided: ", explanation_evaluation);
+
+            }
+            // Note: This is after checking if they even had an explanation we compute their percentages
+            // compute testcases percentage = get the testcases passed percentage and how much that is of the total 50% for the testcases portion, equal to the number of points they got out of the 50% testcases section
+            let testcases_percentage = (num_testcases_passed / output_information.total_testcases) * 50; 
+            // compute explanation percentage = get the explaantion rating percentage which is their total score across all explanation categories by the total avaible explanation points and how much that is of 50T
+            let explanation_percentage = (explanation_evaluation["total_score"] /(10+5+5)) * 50;
+
+            console.log("📈testcases_percentage of 50%: ", testcases_percentage);
+            console.log("📈explanation_percentage of 50%: ", explanation_percentage);
+            console.log("📈total_score of 100%: ", testcases_percentage+explanation_percentage);
+            
+            // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
+            // we update their explanation + testcases scores after eveyr submission
+            if (userID == match.first_player) {
+                match.first_player_explanation_transcript = explanation_transcript || "";
+                match.first_player_explanation_evaluation = explanation_evaluation;
+                match.first_player_testcases_score = testcases_percentage;                      // update testcases percentage
+                match.first_player_explanation_score = explanation_percentage;                  // update explanation percentage
+                match.first_player_total_score = testcases_percentage+explanation_percentage;   // update total percentage
+            } else if (userID == match.second_player) {
+                match.second_player_explanation_transcript = explanation_transcript || "";
+                match.second_player_explanation_evaluation = explanation_evaluation;
+                match.second_player_testcases_score = testcases_percentage;
+                match.second_player_explanation_score = explanation_percentage;
+                match.second_player_total_score = testcases_percentage+explanation_percentage;
             }
         }
-
         
+
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
         if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  //  FIX: Add check for all testcases passed
             console.log("🏆 Winner found in backend submission");
             
-            // check whose id sent thsi request that won then set the winner based on that, set the full user object on just id string
+            // check whose id sent this request that won then set the winner based on that, set the full user object on just id string
             if (userID == match.first_player._id) {
                 match.winner = match.first_player._id; 
             } else if (userID == match.second_player._id) {
@@ -496,7 +513,7 @@ router.post("/submission", async (req, res) => {
             }
             found_winner = true;
         }
-        // set how long the match took based on when it was created and now when it ended
+        // set how long the match took based on when it was created and now when it ended, after every submission
         match.duration = getMatchDuration(match); 
         
         // FIX: SINGLE SAVE OPERATION AT THE END (instead of multiple saves)

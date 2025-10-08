@@ -195,7 +195,7 @@ const language_id_to_name = {
   54:"cpp",    // make sure these are keys in 
   62:"java",
 };
-// HELPER: takes in the raw output for java/c++ code and outputs in format we need ot compare 
+// HELPER: takes in the raw output for java/c++ code and outputs in format we need to compare 
 function parseRawOutput(rawOutput, returnType) {
     const trimmed = rawOutput.trim();
     
@@ -229,6 +229,7 @@ function parseRawOutput(rawOutput, returnType) {
     // single value otuptu
     return parseInt(trimmed) || trimmed;
 }
+
 
 /* 
 This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component
@@ -498,21 +499,53 @@ router.post("/submission", async (req, res) => {
                 match.second_player_total_score = testcases_percentage+explanation_percentage;
             }
         }
-        
+        await match.save();  // NOTE: this is the second save might be slowing it down
 
 
         // if they passed all testcases then this player has won the match, so update the match variables to relfect this
         if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  //  FIX: Add check for all testcases passed
-            console.log("🏆 Winner found in backend submission");
-            
-            // check whose id sent this request that won then set the winner based on that, set the full user object on just id string
-            if (userID == match.first_player._id) {
-                match.winner = match.first_player._id; 
-            } else if (userID == match.second_player._id) {
-                match.winner = match.second_player._id; 
+            console.log("\n🏆 Winner found in backend submission");
+
+            // if regular-match the winner is just who ever passed the most testcases so just update the winner
+            if (match.type === "regular") {
+                // check whose id sent this request that won then set the winner based on that, set the full user object on just id string
+                if (userID == match.first_player._id) {
+                    match.winner = match.first_player._id; 
+                } else if (userID == match.second_player._id) {
+                    match.winner = match.second_player._id; 
+                }
+                found_winner = true;
             }
-            found_winner = true;
+            // if explanation-match the winner is who ever had the highest percentage score out of 100 (50% testcases, 50% explanation) which we computed above
+
+            if (match.type === "explanation") {
+                console.log("👨‍💼 Player 1 score: ", match.first_player_total_score);
+                console.log("🧑‍🔧 Player 2 score: ", match.second_player_total_score);
+                
+                // if both players have indicated that they are done with their entire solution the explanation + code, then only decide who the winner is
+                if (match.first_player_done == true && match.second_player_done == true) {
+                    // if first player percentage is higher they won
+                    if (match.first_player_total_score > match.second_player_total_score) {
+                        console.log("winner is player 1");
+                        match.winner = match.first_player._id;
+                        found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
+                    }
+                    // if second player percentage is higher they won
+                    if (match.second_player_total_score > match.first_player_total_score) {
+                        console.log("winner is player 2");
+                        match.winner = match.second_player._id;
+                        found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
+                    } 
+                    // if both of their percentage is equal its a tie
+                    if (match.first_player_total_score == match.second_player_total_score) {
+
+                    }
+                }
+                
+            }
+            
         }
+
         // set how long the match took based on when it was created and now when it ended, after every submission
         match.duration = getMatchDuration(match); 
         
@@ -538,6 +571,63 @@ router.post("/submission", async (req, res) => {
 });
 
 
+/*
+For an explanation match once a player indicates they are done, we mark them as done
+*/
+router.post("/mark-player-done-explanation-match/:match_id", async (req, res) => {
+    const { match_id } = req.params;
+    const { userID } = req.body;
+
+    try {
+        const match = await MatchModel.findById(match_id);
+        
+        if (!match) {
+            return res.status(404).json({ message: "Match not found" });
+        }
+
+        // check current-userID and mark current player has done because they clicked button
+        if (userID == match.first_player) {
+            match.first_player_done = true;
+            console.log("✅ First player marked as done");
+        } else if (userID == match.second_player) {
+            match.second_player_done = true;
+            console.log("✅ Second player marked as done");
+        }
+
+        // when this player clicked done, we wnat to check if both players are done now
+        if (match.first_player_done && match.second_player_done) {
+            console.log("🏆 Both players done - determining winner");
+            console.log("👨‍💼 Player 1 score: ", match.first_player_total_score);
+            console.log("🧑‍🔧 Player 2 score: ", match.second_player_total_score);
+            
+            // if player-1 total score is greater they won
+            if (match.first_player_total_score > match.second_player_total_score) {
+                match.winner = match.first_player;
+                console.log("Winner: Player 1");
+            // if player-2 total score is greater they won
+            } else if (match.second_player_total_score > match.first_player_total_score) {
+                match.winner = match.second_player;
+                console.log("Winner: Player 2");
+            } else {
+                match.winner = null; 
+                console.log("Result: Tie");
+            }
+        }
+
+        await match.save();
+
+        res.status(200).json({
+            message: "Player marked as done",
+            match: match,
+            both_players_done: match.first_player_done && match.second_player_done
+        });
+        
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+
 
 // ***HELPER FUNCTIONS***
 
@@ -547,6 +637,16 @@ const JUDGE0_HEADERS = {
   'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,
   'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
 };
+
+// given the current users id and an match-obj, sets the winner of that match to be
+function setWinner(userID, match) {
+    if (userID == match.first_player._id) {
+        match.winner = match.first_player._id; 
+    } else if (userID == match.second_player._id) {
+        match.winner = match.second_player._id; 
+    }
+    return match
+}
 
 // use when match.createdAt when it was created so we can calcualte match duration
 function getMatchDuration(match) {

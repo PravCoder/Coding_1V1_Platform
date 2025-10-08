@@ -42,6 +42,7 @@ const CodeEditor = ({ match_id }) => {
   const [explanationTranscript, setExplanationTranscript] = useState("");
   const [isMicrophoneOn, setIsMicrophoneOn] = useState(false);    // to toggle the microphone, default is on when match starts. 
   const [microphoneError, setMicrophoneError] = useState(null);   // if there is a microphone error
+  // const [showDoneButton, setShowDoneButton] = useState(false);
   
   
   // Initialize matchStartTime from localStorage or create new one
@@ -145,6 +146,7 @@ const CodeEditor = ({ match_id }) => {
     }
     socketRef.current.emit("rejoin_match", { match_id }); // if their socket changes rejoin-match
 
+    // this is how we update the other players opps variables, and how we know to redirect them to match outcome page when the other but submits correct solution
     const handleOpponentUpdate = (data) => {
       console.log("Received opponent_update. Socket ID:", socketRef.current.id);
       console.log("Update data:", data);
@@ -166,8 +168,10 @@ const CodeEditor = ({ match_id }) => {
 
       // other-user presses submit and they pass all testcases, we should redirect ourselves to
       console.log("found winner: ", data.found_winner); 
-      if (data.found_winner == true) {
-        console.log("redirect to match outcome because other person won")
+      // IMPORTANT: when there is a submission if and only if it found a winner then we redirect to match outcome page FOR REGULAR MATCH, this is hwo we redirect oppponent to match outcome in regular match when other guy submits
+      console.log('MatchType: ',matchType );
+      if (data.found_winner == true && data.match.type === "regular") {
+        // console.log("redirect to match outcome because other person won")
         navigate(`/match-outcome/${match_id}`);
       }
     };
@@ -311,9 +315,19 @@ const CodeEditor = ({ match_id }) => {
           console.log("get_my_update callback:", response);
         });
 
-        // when cur-user presses submit and passes testcases redirect them to match outcome page
-        if (result.data.found_winner == true) {
-          navigate(`/match-outcome/${match_id}`);
+        
+        if (testcases_passed === result.data.total_testcases) {
+            if (matchType === "explanation") {
+                // Show "I'm Done" button for explanation matches
+                // setShowDoneButton(true);
+                // setHasCompletedProblem(true);
+                alert("Great! Continue explaining. Click 'I'm Done' when you've finished your explanation.");
+            } else {
+                // regular match - redirect immediately, // when cur-user presses submit and passes testcases redirect them to match outcome page
+                if (result.data.found_winner) {
+                    navigate(`/match-outcome/${match_id}`);
+                }
+            }
         }
       }
 
@@ -322,6 +336,28 @@ const CodeEditor = ({ match_id }) => {
       // console.error(error.response.data.message);  
     }
   };
+
+  // for explanation match
+  const handlePlayerDone = async () => {
+    try {
+        const response = await axios.post(`http://localhost:3001/match/mark-player-done-explanation-match/${match_id}`, {
+            userID: getCurrentUser()
+        });
+
+        // emit to player-done event which just notifies other player that they are done through opponent_done
+        if (socketRef.current) {
+            socketRef.current.emit("player_done", { match_id });
+        }
+
+        // redirect to match outcome will show loading state if other player is not done, even they indicate they are done
+        navigate(`/match-outcome/${match_id}`);
+
+    } catch (error) {
+        console.error("Error marking player as done:", error);
+        alert("Error submitting. Redirecting anyway...");
+        navigate(`/match-outcome/${match_id}`);
+    }
+};
 
 
   // changes the microphone from on to off vice versa.
@@ -590,6 +626,16 @@ const CodeEditor = ({ match_id }) => {
                   <span className="text-green-500 animate-pulse">● Recording...</span>
                 )}
               </div>
+            )}
+
+
+            {matchType === "explanation" && (
+                <button 
+                    className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold" 
+                    onClick={handlePlayerDone}
+                >
+                    ✓ I'M DONE
+                </button>
             )}
 
             {/* SHOW MICROPHONE ERROS */}

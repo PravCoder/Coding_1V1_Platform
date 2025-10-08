@@ -329,7 +329,8 @@ io.on("connection", (socket) => {
             second_player_latest_testcases_passed: match.second_player_latest_testcases_passed,
             first_player_max_testcases_passed: match.first_player_max_testcases_passed,
             second_player_max_testcases_passed: match.second_player_max_testcases_passed,
-            winner:match.winner
+            winner:match.winner, 
+            type: match.type,   // passing so we know weather to redirect upon winner found or not
         }, found_winner:found_winner});
     });
 
@@ -347,6 +348,30 @@ io.on("connection", (socket) => {
             first_player_max_testcases_passed: match.first_player_max_testcases_passed,
             second_player_max_testcases_passed: match.second_player_max_testcases_passed
         }});
+    });
+
+
+    /* 
+    Listening for whenever a player clicks done for explanation match
+    */
+    socket.on("player_done", async (data) => {
+        const { match_id } = data;
+        console.log("Player marked as done for match:", match_id);
+        
+        try {
+            const match = await MatchModel.findById(match_id);
+            if (!match) return;
+            
+            // notify the other player
+            socket.to(match.match_str).emit("opponent_done");
+            
+            // if both players are done, notify both to stop loading on match-outcome page
+            if (match.first_player_done && match.second_player_done) {
+                io.to(match.match_str).emit("both_players_done", { match });
+            }
+        } catch (error) {
+            console.error("Error handling player_done:", error);
+        }
     });
 
     // get latest match time used when player first loads the match

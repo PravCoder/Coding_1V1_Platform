@@ -42,7 +42,7 @@ const CodeEditor = ({ match_id }) => {
   const [explanationTranscript, setExplanationTranscript] = useState("");
   const [isMicrophoneOn, setIsMicrophoneOn] = useState(false);    // to toggle the microphone, default is on when match starts. 
   const [microphoneError, setMicrophoneError] = useState(null);   // if there is a microphone error
-  // const [showDoneButton, setShowDoneButton] = useState(false);
+  const [hasSubmittedOnce, setHasSubmittedOnce] = useState(false);  // we want to know if the user submitted at least once so we can enable the "IM DONE" button for explanation match.
   
   
   // Initialize matchStartTime from localStorage or create new one
@@ -170,7 +170,7 @@ const CodeEditor = ({ match_id }) => {
       console.log("found winner: ", data.found_winner); 
       // IMPORTANT: when there is a submission if and only if it found a winner then we redirect to match outcome page FOR REGULAR MATCH, this is hwo we redirect oppponent to match outcome in regular match when other guy submits
       console.log('MatchType: ',matchType );
-      if (data.found_winner == true && data.match.type === "regular") {
+      if (data.found_winner == true && data.match.type === "regular") {   // re dont redirect on opponent update for explanation match
         // console.log("redirect to match outcome because other person won")
         navigate(`/match-outcome/${match_id}`);
       }
@@ -291,6 +291,8 @@ const CodeEditor = ({ match_id }) => {
 
       setOutput(result.data.display_output.split("\n"));
       setTotalTestcases(result.data.total_testcases); // since this is not stored in problem.total_testcaes
+      // mark that user has submitted at least once for this match so they can press done-button for explanation-match
+      setHasSubmittedOnce(true);  
       // when handling submission stuff, save cur users testcases passed so we can emit it to the opponent as a progress variable
       // setMyCurTestcases(result.data.num_testcases_passed); 
       // setUserSubmissions(result.data.cur_user_submissions);
@@ -631,8 +633,10 @@ const CodeEditor = ({ match_id }) => {
 
             {matchType === "explanation" && (
                 <button 
-                    className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold" 
+                    className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold 
+               disabled:bg-gray-400 disabled:cursor-not-allowed"
                     onClick={handlePlayerDone}
+                    disabled={!hasSubmittedOnce}
                 >
                     ✓ I'M DONE
                 </button>

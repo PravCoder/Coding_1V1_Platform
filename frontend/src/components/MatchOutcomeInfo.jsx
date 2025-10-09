@@ -56,7 +56,7 @@ const MatchOutcomeInfo = ({ match_id }) => {
       socketRef.current = io("http://localhost:3001");
     }
 
-    // list for opponent marking as done, we emit to this event in player_done-event listening
+    // just for opponent marking as done, we emit to this event in player_done-event listening
     socketRef.current.on("opponent_done", () => {
       console.log("Opponent marked as done");
       // refresh match data

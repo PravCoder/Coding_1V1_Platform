@@ -152,7 +152,7 @@ router.post("/run-code", async (req, res) => {
 
 
 
-// HELPER: for java/c++ we have to pass stdin-input in a different format not json like for python, it has to be a string
+// HELPER: for c++ we have to pass stdin-input in a different format not json like for python, it has to be a string
 function generateStdinInput(cur_testcase, parameters, language) {
   if (language !== 'cpp' && language !== 'java') {
     // For other languages (like Python), return JSON of the input
@@ -621,7 +621,7 @@ router.post("/mark-player-done-explanation-match/:match_id", async (req, res) =>
             match: match,
             both_players_done: match.first_player_done && match.second_player_done
         });
-        
+
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

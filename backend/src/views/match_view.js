@@ -232,7 +232,8 @@ function parseRawOutput(rawOutput, returnType) {
 
 
 /* 
-This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component
+This route processes a submission, and checks against all testcases of the matches problem, and returns the results to the component.
+Regular match winner determination is here. 
 */
 router.post("/submission", async (req, res) => {
     console.log("\n-----Submission Start Processing Testcases-----:");
@@ -356,7 +357,7 @@ router.post("/submission", async (req, res) => {
                     // Python outputs JSON, so parse it
                     userOutput = JSON.parse(response.data.stdout.trim());
                 } else {
-                    // for javav/c++ output raw strings.
+                    // for c++ output raw strings.
                     userOutput = parseRawOutput(response.data.stdout.trim(), match.problem.return_type);
                 }
                 
@@ -438,113 +439,23 @@ router.post("/submission", async (req, res) => {
 
         // if its an explanation match
         console.log("match is ", match.type);
-        // stores the json of the explanation ratings
-        let explanation_evaluation = null;
-        if (match.type === "explanation") {
-            // if there is a explanation and it has come content in it: get their ratings from openai
-            if (explanation_transcript && explanation_transcript.trim().length > 0) {
-                // call func that takes in problem, code, explanation and sends request to openai for rating
-                explanation_evaluation = await evaluateExplanationOpenAI(
-                    match.problem,
-                    sourceCode,
-                    explanation_transcript,
-                    language_name
-                );
-                console.log("\n📊 Explanation evaluation:", explanation_evaluation);
-
-            // if the player didn't provide an explanation: compute their scores of 0 and don't send to openai
-            } else {
-                explanation_evaluation = {
-                    correctness: {
-                        score: 0,
-                        feedback: "No explanation of code was provided"
-                    },
-                    clarity: {
-                        score: 0,
-                        feedback: "No explanation of code was provided"
-                    },
-                    completeness: {
-                        score: 0,
-                        feedback: "No explanation of code was provided"
-                    },
-                    total_score: 0,
-                    overall_feedback: "No explanation of code was provided"
-                };
-                console.log("\n📊 No explaantion was provided: ", explanation_evaluation);
-
-            }
-            // Note: This is after checking if they even had an explanation we compute their percentages
-            // compute testcases percentage = get the testcases passed percentage and how much that is of the total 50% for the testcases portion, equal to the number of points they got out of the 50% testcases section
-            let testcases_percentage = (num_testcases_passed / output_information.total_testcases) * 50; 
-            // compute explanation percentage = get the explaantion rating percentage which is their total score across all explanation categories by the total avaible explanation points and how much that is of 50T
-            let explanation_percentage = (explanation_evaluation["total_score"] /(10+5+5)) * 50;
-
-            console.log("📈testcases_percentage of 50%: ", testcases_percentage);
-            console.log("📈explanation_percentage of 50%: ", explanation_percentage);
-            console.log("📈total_score of 100%: ", testcases_percentage+explanation_percentage);
-            
-            // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
-            // we update their explanation + testcases scores after eveyr submission
-            if (userID == match.first_player) {
-                match.first_player_explanation_transcript = explanation_transcript || "";
-                match.first_player_explanation_evaluation = explanation_evaluation;
-                match.first_player_testcases_score = testcases_percentage;                      // update testcases percentage
-                match.first_player_explanation_score = explanation_percentage;                  // update explanation percentage
-                match.first_player_total_score = testcases_percentage+explanation_percentage;   // update total percentage
-            } else if (userID == match.second_player) {
-                match.second_player_explanation_transcript = explanation_transcript || "";
-                match.second_player_explanation_evaluation = explanation_evaluation;
-                match.second_player_testcases_score = testcases_percentage;
-                match.second_player_explanation_score = explanation_percentage;
-                match.second_player_total_score = testcases_percentage+explanation_percentage;
-            }
-        }
-        await match.save();  // NOTE: this is the second save might be slowing it down
-
-
-        // if they passed all testcases then this player has won the match, so update the match variables to relfect this
+        // TODO: save transcript upon every explanation-match submission
         if (submission_result === "passed" && num_testcases_passed === output_information.total_testcases) {  //  FIX: Add check for all testcases passed
-            console.log("\n🏆 Winner found in backend submission");
+            
 
-            // if regular-match the winner is just who ever passed the most testcases so just update the winner
+            // if regular-match the winner is just who ever passed the most testcases just on so just update the winner
             if (match.type === "regular") {
+                console.log("\n🏆 Winner found in backend submission for regular match");
                 // check whose id sent this request that won then set the winner based on that, set the full user object on just id string
                 if (userID == match.first_player._id) {
                     match.winner = match.first_player._id; 
                 } else if (userID == match.second_player._id) {
                     match.winner = match.second_player._id; 
                 }
-                found_winner = true;
+                found_winner = true; // have to set this so we can redirect to match-outcome page, this is our indication
             }
-            // if explanation-match the winner is who ever had the highest percentage score out of 100 (50% testcases, 50% explanation) which we computed above
-
-            if (match.type === "explanation") {
-                console.log("👨‍💼 Player 1 score: ", match.first_player_total_score);
-                console.log("🧑‍🔧 Player 2 score: ", match.second_player_total_score);
-                
-                // if both players have indicated that they are done with their entire solution the explanation + code, then only decide who the winner is
-                if (match.first_player_done == true && match.second_player_done == true) {
-                    // if first player percentage is higher they won
-                    if (match.first_player_total_score > match.second_player_total_score) {
-                        console.log("winner is player 1");
-                        match.winner = match.first_player._id;
-                        found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
-                    }
-                    // if second player percentage is higher they won
-                    if (match.second_player_total_score > match.first_player_total_score) {
-                        console.log("winner is player 2");
-                        match.winner = match.second_player._id;
-                        found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
-                    } 
-                    // if both of their percentage is equal its a tie
-                    if (match.first_player_total_score == match.second_player_total_score) {
-
-                    }
-                }
-                
-            }
-            
         }
+        
 
         // set how long the match took based on when it was created and now when it ended, after every submission
         match.duration = getMatchDuration(match); 
@@ -572,20 +483,28 @@ router.post("/submission", async (req, res) => {
 
 
 /*
-For an explanation match once a player indicates they are done, we mark them as done
+When they press DONE-button for explanation match.
+For an explanation match once a player indicates they are done, we mark them as done.
+Then we send the openai request to evalualte their explanation, dont check against testcases because their last /submission request did that
+Check winner determination of explanation match here, not in /submission.
 */
 router.post("/mark-player-done-explanation-match/:match_id", async (req, res) => {
+    console.log("\n-----Mark Player Done [Explanation Match]-----:");
+
     const { match_id } = req.params;
-    const { userID } = req.body;
+    // get stuff we passed to this request
+    const { userID, explanation_transcript, sourceCode, languageId } = req.body;
 
     try {
-        const match = await MatchModel.findById(match_id);
-        
+        const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "testcases" }});
+
         if (!match) {
             return res.status(404).json({ message: "Match not found" });
         }
 
-        // check current-userID and mark current player has done because they clicked button
+        const language_name = getLanguageName(languageId);
+
+        // mark player as done
         if (userID == match.first_player) {
             match.first_player_done = true;
             console.log("✅ First player marked as done");
@@ -594,23 +513,88 @@ router.post("/mark-player-done-explanation-match/:match_id", async (req, res) =>
             console.log("✅ Second player marked as done");
         }
 
-        // when this player clicked done, we wnat to check if both players are done now
-        if (match.first_player_done && match.second_player_done) {
-            console.log("🏆 Both players done - determining winner");
-            console.log("👨‍💼 Player 1 score: ", match.first_player_total_score);
-            console.log("🧑‍🔧 Player 2 score: ", match.second_player_total_score);
-            
-            // if player-1 total score is greater they won
+        // evulate explanation with OpenAI, send request with this users explanation transcript
+        let explanation_evaluation = null;
+        if (explanation_transcript && explanation_transcript.trim().length > 0) {
+            console.log("\n🎤 Evaluating explanation with OpenAI...: ", explanation_transcript);
+            // call func that takes in problem, code, explanation and sends request to openai for rating
+            explanation_evaluation = await evaluateExplanationOpenAI(
+                match.problem,
+                sourceCode,
+                explanation_transcript,
+                language_name
+            );
+            console.log("📊 Explanation evaluation:", explanation_evaluation);
+        } else {
+            // if user didnt provide an explanation
+            explanation_evaluation = {
+                correctness: { score: 0, feedback: "No explanation provided" },
+                clarity: { score: 0, feedback: "No explanation provided" },
+                completeness: { score: 0, feedback: "No explanation provided" },
+                total_score: 0,
+                overall_feedback: "No explanation provided"
+            };
+        }
+
+        // now compute scores of this player after they clicked done for explanation match
+        const totalTestcases = match.problem.testcases.length;
+        // Note: This is after checking if they even had an explanation we compute their percentages
+
+        // get the number of testcases this player passed for score computation
+        let num_testcases_passed;
+        if (userID == match.first_player) {
+            num_testcases_passed = match.first_player_latest_testcases_passed;
+        }  else if (userID == match.second_player) { 
+            num_testcases_passed = match.second_player_latest_testcases_passed;
+        }
+
+        // compute testcases percentage = get the testcases passed percentage and how much that is of the total 50% for the testcases portion, equal to the number of points they got out of the 50% testcases section
+        let testcases_percentage = (num_testcases_passed / totalTestcases) * 50; 
+        // compute explanation percentage = get the explaantion rating percentage which is their total score across all explanation categories by the total avaible explanation points and how much that is of 50T
+        let explanation_percentage = (explanation_evaluation["total_score"] /(10+5+5)) * 50;
+
+        console.log("📈testcases_percentage of 50%: ", testcases_percentage);
+        console.log("📈explanation_percentage of 50%: ", explanation_percentage);
+        console.log("📈total_score of 100%: ", testcases_percentage+explanation_percentage);
+        
+        // set the match-objs explanation transcript string and evlation-json for each player, for every submisison it updates this
+        // we update their explanation + testcases scores after eveyr submission
+        if (userID == match.first_player) {
+            match.first_player_explanation_transcript = explanation_transcript || "";
+            match.first_player_explanation_evaluation = explanation_evaluation;
+            match.first_player_testcases_score = testcases_percentage;                      // update testcases percentage
+            match.first_player_explanation_score = explanation_percentage;                  // update explanation percentage
+            match.first_player_total_score = testcases_percentage+explanation_percentage;   // update total percentage
+        } else if (userID == match.second_player) {
+            match.second_player_explanation_transcript = explanation_transcript || "";
+            match.second_player_explanation_evaluation = explanation_evaluation;
+            match.second_player_testcases_score = testcases_percentage;
+            match.second_player_explanation_score = explanation_percentage;
+            match.second_player_total_score = testcases_percentage+explanation_percentage;
+        }
+
+        // Winner determination for explanation match.
+        // we can only determine if both playesr are marked as done
+        console.log("👨‍💼 Player 1 score: ", match.first_player_total_score);
+        console.log("🧑‍🔧 Player 2 score: ", match.second_player_total_score);
+        
+        // if both players have indicated that they are done with their entire solution the explanation + code, then only decide who the winner is
+        if (match.first_player_done == true && match.second_player_done == true) {
+            // if first player percentage is higher they won
             if (match.first_player_total_score > match.second_player_total_score) {
-                match.winner = match.first_player;
-                console.log("Winner: Player 1");
-            // if player-2 total score is greater they won
-            } else if (match.second_player_total_score > match.first_player_total_score) {
-                match.winner = match.second_player;
-                console.log("Winner: Player 2");
-            } else {
-                match.winner = null; 
-                console.log("Result: Tie");
+                console.log("winner is player 1");
+                match.winner = match.first_player._id;
+                found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
+            }
+            // if second player percentage is higher they won
+            if (match.second_player_total_score > match.first_player_total_score) {
+                console.log("winner is player 2");
+                match.winner = match.second_player._id;
+                found_winner = true;    // only when both players are done we indicate to redirect to match-outcome
+            } 
+            // if both of their percentage is equal its a tie
+            if (match.first_player_total_score == match.second_player_total_score) {
+
             }
         }
 
@@ -619,13 +603,16 @@ router.post("/mark-player-done-explanation-match/:match_id", async (req, res) =>
         res.status(200).json({
             message: "Player marked as done",
             match: match,
-            both_players_done: match.first_player_done && match.second_player_done
+            both_players_done: match.first_player_done && match.second_player_done, // pass the state weather both players are done or not
+            explanation_evaluation: explanation_evaluation
         });
 
     } catch (error) {
+        console.error("Error marking player as done:", error);
         res.status(500).json({ message: error.message });
     }
 });
+
 
 
 

@@ -41,6 +41,25 @@ const CodeEditor = ({ match_id }) => {
   });
   const [shouldRestartTimer, setShouldRestartTimer] = useState(false);
 
+  // define output variables to display near output box
+  const [output, setOutput] = useState(null);
+  const [time, setTime] = useState(null);
+  const [memory, setMemory] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
+  // opponent progress variables
+  const [opponentSubmissions, setOpponentSubmissions] = useState(0);
+  const [oppsCurTestcasesPassed, setOppsCurTestcasesPassed] = useState(0);
+  const [oppsMaxTestcasesPassed, setOppsMaxTestcasesPassed] = useState(0);
+  const [totalTestcases, setTotalTestcases] = useState(0);
+  // cur users variables
+  const [userSubmissions, setUserSubmissions] = useState(0);
+  const [userCurTestcasesPassed, setUserCurTestcasesPassed] = useState(0);
+  const [userMaxTestcasesPassed, setUserMaxTestcasesPassed] = useState(0);
+  
+  // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
+  const socketRef = useRef(null); 
+
   // variables for explanation match
   const [explanationTranscript, setExplanationTranscript] = useState("");
   const [isMicrophoneOn, setIsMicrophoneOn] = useState(false);    // to toggle the microphone, default is on when match starts. 
@@ -113,24 +132,6 @@ const CodeEditor = ({ match_id }) => {
     };
   }, [isMatchStarted]);
 
-  // define output variables to display near output box
-  const [output, setOutput] = useState(null);
-  const [time, setTime] = useState(null);
-  const [memory, setMemory] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isError, setIsError] = useState(false);
-  // opponent progress variables
-  const [opponentSubmissions, setOpponentSubmissions] = useState(0);
-  const [oppsCurTestcasesPassed, setOppsCurTestcasesPassed] = useState(0);
-  const [oppsMaxTestcasesPassed, setOppsMaxTestcasesPassed] = useState(0);
-  const [totalTestcases, setTotalTestcases] = useState(0);
-  // cur users variables
-  const [userSubmissions, setUserSubmissions] = useState(0);
-  const [userCurTestcasesPassed, setUserCurTestcasesPassed] = useState(0);
-  const [userMaxTestcasesPassed, setUserMaxTestcasesPassed] = useState(0);
-  
-  // Use ref to maintain socket instance, because during navigation socket.id changes. Maintains same ref through out component life cycle
-  const socketRef = useRef(null); 
 
 
   const onMount = (editor) => {
@@ -360,6 +361,7 @@ const CodeEditor = ({ match_id }) => {
                 alert("Great! Continue explaining. Click 'I'm Done' when you've finished your explanation.");
             } else {
                 // regular match - redirect immediately, // when cur-user presses submit and passes testcases redirect them to match outcome page
+                // found-winner = true for regular match when player passes all testcases redirect immedately
                 if (result.data.found_winner) {
                     navigate(`/match-outcome/${match_id}`);
                 }
@@ -382,9 +384,8 @@ const CodeEditor = ({ match_id }) => {
   // for explanation match
   const handlePlayerDone = async () => {
     try {
-        const response = await axios.post(`http://localhost:3001/match/mark-player-done-explanation-match/${match_id}`, {
-            userID: getCurrentUser()
-        });
+        const response = await axios.post(`http://localhost:3001/match/mark-player-done-explanation-match/${match_id}`, {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
+                userID:getCurrentUser(), explanation_transcript:explanationTranscript});
 
         // emit to player-done event which just notifies other player that they are done through opponent_done
         if (socketRef.current) {
@@ -411,7 +412,7 @@ const CodeEditor = ({ match_id }) => {
         // Stop the test stream immediately
         stream.getTracks().forEach(track => track.stop());
         
-        // Permission granted, turn on microphone
+        // turn on microphone
         setIsMicrophoneOn(true);
         setMicrophoneError(null);
         console.log("✅ Microphone permission granted");
@@ -742,7 +743,7 @@ const CodeEditor = ({ match_id }) => {
 
             {/* Editor + IO */}
             <div className="mt-2 flex-1 min-h-0 flex flex-col min-w-0">
-              {/* Editor with fixed height */}
+              {/* Editor with fixed height, this is where we display the sourceCode and update it when its changed by user */}
               <div
                 ref={editorContainerRef}
                 className="flex-1 min-h-0 rounded overflow-hidden"
@@ -753,7 +754,7 @@ const CodeEditor = ({ match_id }) => {
                   height="100%"
                   width="100%"
                   language={language}
-                  value={sourceCode}
+                  value={sourceCode}    
                   onChange={(value) => setSourceCode(value)}
                   theme="vs-dark"
                   options={{

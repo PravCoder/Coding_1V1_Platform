@@ -1,4 +1,5 @@
 import React from 'react';
+import VideoCamera from './VideoCamera';
 
 const MatchProgressGraph = ({
   opponentSubmissions,
@@ -7,7 +8,9 @@ const MatchProgressGraph = ({
   userSubmissions,
   userCurTestcasesPassed,
   userMaxTestcasesPassed,
-  totalTestcases
+  totalTestcases,
+  match_id,
+  socketRef
 }) => {
   const oppProgressPercentage = totalTestcases > 0 ? (oppsCurTestcasesPassed / totalTestcases) * 100 : 0;
   const oppMaxProgressPercentage = totalTestcases > 0 ? (oppsMaxTestcasesPassed / totalTestcases) * 100 : 0;
@@ -23,13 +26,16 @@ const MatchProgressGraph = ({
         <div className="text-sm text-gray-400">Total Testcases: {totalTestcases}</div>
       </div>
 
+      {/* Video Camera Component */}
+      <VideoCamera match_id={match_id} socketRef={socketRef} />
+
       {/* Progress Bars Section */}
       {/* User Progress */}
         <div className="bg-[#2D2D2D] p-4 rounded-lg">
           <h3 className="text-lg font-semibold text-green-400 mb-3">Your Progress</h3>
           
           {/* Submissions Bar */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Submissions</span>
               <span className='text-green-400 font-semibold'>{userSubmissions}</span>
@@ -37,7 +43,7 @@ const MatchProgressGraph = ({
           </div>
 
           {/* Current Testcases Passed */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Current Testcases Passed</span>
               <span className="text-green-400 font-semibold">{userCurTestcasesPassed}/{totalTestcases}</span>
@@ -51,7 +57,7 @@ const MatchProgressGraph = ({
           </div>
 
           {/* Max Testcases Passed */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Max Testcases Passed</span>
               <span className="text-green-400 font-semibold">{userMaxTestcasesPassed}/{totalTestcases}</span>
@@ -64,13 +70,13 @@ const MatchProgressGraph = ({
             </div>
           </div>
         </div>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Opponent Progress */}
         <div className="bg-[#2D2D2D] p-4 rounded-lg">
           <h3 className="text-lg font-semibold text-red-400 mb-3">Opponent Progress</h3>
           
           {/* Submissions Bar */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Submissions</span>
               <span className="text-red-400 font-semibold">{opponentSubmissions}</span>
@@ -79,7 +85,7 @@ const MatchProgressGraph = ({
           </div>
 
           {/* Current Testcases Passed */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Current Testcases Passed</span>
               <span className="text-red-400 font-semibold">{oppsCurTestcasesPassed}/{totalTestcases}</span>
@@ -93,7 +99,7 @@ const MatchProgressGraph = ({
           </div>
 
           {/* Max Testcases Passed */}
-          <div className="mb-3">
+          <div className="mb-2">
             <div className="flex justify-between text-sm mb-1">
               <span className="text-gray-300">Max Testcases Passed</span>
               <span className="text-red-400 font-semibold">{oppsMaxTestcasesPassed}/{totalTestcases}</span>

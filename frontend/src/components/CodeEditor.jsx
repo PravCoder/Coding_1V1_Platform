@@ -602,7 +602,8 @@ const CodeEditor = ({ match_id }) => {
                   opponentSubmissions={opponentSubmissions}
                   oppsCurTestcasesPassed={oppsCurTestcasesPassed}
                   oppsMaxTestcasesPassed={oppsMaxTestcasesPassed}
-
+                  match_id={match_id}
+                  socketRef={socketRef}
                 />
               </div>
             </div>

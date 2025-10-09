@@ -6,6 +6,7 @@ import io from "socket.io-client";
 
 import getCurrentUser from "../hooks/getCurrentUser";
 import MatchTimer from "./MatchTimer";
+import MatchProgressGraph from "./MatchProgressGraph";
 
 // Language map (Judge0 IDs)
 const languageOptions = {
@@ -592,29 +593,17 @@ const CodeEditor = ({ match_id }) => {
               <div className="shrink-0">
                 <MatchTimer match_id={match_id} socketRef={socketRef} />
               </div>
-
               <div className="flex-1 overflow-auto">
-                <h2 className="text-lg mt-2">
-                  Opponent Submissions: {opponentSubmissions}
-                </h2>
-                <h2>
-                  Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/
-                  {totalTestcases}
-                </h2>
-                <h2>
-                  Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/
-                  {totalTestcases}
-                </h2>
-                <br />
-                <h2>My Submissions: {userSubmissions}</h2>
-                <h2>
-                  My Latest Testcases Passed: {userCurTestcasesPassed}/
-                  {totalTestcases}
-                </h2>
-                <h2>
-                  My Max Testcases Passed: {userMaxTestcasesPassed}/
-                  {totalTestcases}
-                </h2>
+                <MatchProgressGraph
+                  userSubmissions={userSubmissions}
+                  userCurTestcasesPassed={userCurTestcasesPassed}
+                  userMaxTestcasesPassed={userMaxTestcasesPassed}
+                  totalTestcases={totalTestcases}
+                  opponentSubmissions={opponentSubmissions}
+                  oppsCurTestcasesPassed={oppsCurTestcasesPassed}
+                  oppsMaxTestcasesPassed={oppsMaxTestcasesPassed}
+
+                />
               </div>
             </div>
           </div>
@@ -625,3 +614,4 @@ const CodeEditor = ({ match_id }) => {
 };
 
 export default CodeEditor;
+

@@ -8,6 +8,8 @@ import  getCurrentUser  from "../hooks/getCurrentUser";
 import axios from "axios";
 import io from "socket.io-client";
 import MatchTimer from "./MatchTimer";
+import MatchProgressGraph from "./MatchProgressGraph";
+
 const socket = io.connect("http://localhost:3001"); 
 
 
@@ -22,6 +24,7 @@ const languageOptions = {
 
 const CodeEditor = ({ match_id }) => {
   const editorRef = useRef();
+  const editorContainerRef = useRef(null);
   const navigate = useNavigate();
   const [match, setMatch] = useState({});
   const [language, setLanguage] = useState("python");
@@ -50,6 +53,23 @@ const CodeEditor = ({ match_id }) => {
     const savedTime = localStorage.getItem('match_start_time');
     return savedTime ? new Date(savedTime) : null;
   });
+
+  // (Optional) Filter noisy ResizeObserver errors from Chrome dev console
+  useEffect(() => {
+    const errFilter = (e) => {
+      const msg = e?.message || "";
+      if (
+        msg.includes("ResizeObserver loop limit exceeded") ||
+        msg.includes("ResizeObserver loop completed with undelivered notifications")
+      ) {
+        e.preventDefault?.();
+        e.stopImmediatePropagation?.();
+        return false;
+      }
+    };
+    window.addEventListener("error", errFilter);
+    return () => window.removeEventListener("error", errFilter);
+  }, []);
 
   const handleCountdownComplete = (newStartTime) => {
     setMatchStartTime(newStartTime);
@@ -116,6 +136,12 @@ const CodeEditor = ({ match_id }) => {
   const onMount = (editor) => {
     editorRef.current = editor;
     editor.focus();
+    // Ensure initial layout with proper dimensions
+    setTimeout(() => {
+      try {
+        editor.layout();
+      } catch {}
+    }, 100);
   };
 
   // TO GET THE PROBLEM FOR THIS MATCH
@@ -237,7 +263,14 @@ const CodeEditor = ({ match_id }) => {
     console.log("handleLanguageChange get-match-problem response data: ", response);
     setProblem(response.data.problem);
     setMatch(response.data.match);
-    setSourceCode(response.data.template); 
+    setSourceCode(response.data.template);
+    
+    // Layout editor after language change
+    setTimeout(() => {
+      try {
+        editorRef.current?.layout();
+      } catch {}
+    }, 100);
   };
 
   // Separate effect to set initial code when problem first loads
@@ -257,6 +290,7 @@ const CodeEditor = ({ match_id }) => {
   This is for running code against custom input
   */
   const runCode = async () => {
+    setIsLoading(true);
     try{
       const response = await axios.post(`http://localhost:3001/match/run-code`, {sourceCode:sourceCode, customInput:customInput, languageId:languageOptions[language]});
       console.log("Output running code with custom input: " + response.data);
@@ -267,7 +301,7 @@ const CodeEditor = ({ match_id }) => {
     } catch (error) {
       setOutput("Error running code with custom input.");
       console.error(error);
-
+      setIsError(true);
       
     } finally {
       setIsLoading(false);
@@ -333,6 +367,12 @@ const CodeEditor = ({ match_id }) => {
         }
       }
 
+      // Layout editor after DOM settles
+      setTimeout(() => {
+        try {
+          editorRef.current?.layout();
+        } catch {}
+      }, 100);
 
     } catch (error) {
       // console.error(error.response.data.message);  
@@ -359,7 +399,7 @@ const CodeEditor = ({ match_id }) => {
         alert("Error submitting. Redirecting anyway...");
         navigate(`/match-outcome/${match_id}`);
     }
-};
+  };
 
 
   // changes the microphone from on to off vice versa.
@@ -538,11 +578,46 @@ const CodeEditor = ({ match_id }) => {
     };
   }, [matchType, isMicrophoneOn]);
 
+  // Improved ResizeObserver with debouncing
+  useEffect(() => {
+    if (!editorContainerRef.current) return;
+
+    let timeoutId = null;
+    const ro = new ResizeObserver((entries) => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        try {
+          editorRef.current?.layout();
+        } catch {}
+      }, 16); // ~60fps
+    });
+    
+    ro.observe(editorContainerRef.current);
+
+    return () => {
+      ro.disconnect();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, []);
+
+  // Layout when toggling opponent panel
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      try {
+        editorRef.current?.layout();
+      } catch {}
+    }, 100);
+    
+    return () => clearTimeout(timeoutId);
+  }, [showOpponentBox]);
+
 
   console.log("outputinfo: ", outputInfo);
   return (
     <div className={`h-screen bg-[#1E1E1E] text-white ${isCountdownActive ? 'pointer-events-none' : ''}`}>
+      {/* Fixed height grid with proper proportions */}
       <div className="flex h-full">
+        {/* LEFT: Problem Panel */}
         <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
           <div className="bg-[#2D2D2D] rounded-lg p-6 h-full">
             <div className="flex items-center mb-4">
@@ -555,15 +630,17 @@ const CodeEditor = ({ match_id }) => {
                 <div className="p-4 bg-[#1E1E1E] border-r border-[#333333]">
                   <h3 className="text-[#CCCCCC] font-semibold mb-2">EXAMPLES:</h3>
                   {problem.examples}
-
                 </div>
               </div>         
             </div>
           </div>
         </div>
+
+        {/* MIDDLE: Editor Panel */}
         <div className={`p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto ${showOpponentBox ? 'w-full md:w-1/2 lg:w-1/3' : 'w-full md:w-2/3 lg:w-2/3'}`}>
-          <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
-            <div className="flex justify-end space-x-2">
+          <div className="bg-[#2D2D2D] rounded-lg p-2 h-full flex flex-col">
+            {/* Controls */}
+            <div className="flex justify-end space-x-2 shrink-0">
               <button 
                 onClick={() => setShowOpponentBox(!showOpponentBox)} 
                 className="px-3 py-1 bg-[#333333] text-white rounded hover:bg-[#444444] transition-colors"
@@ -596,53 +673,57 @@ const CodeEditor = ({ match_id }) => {
                 {isLoading ? "Running..." : "SUBMIT"}
               </button>
             </div>
-            <label className="text-sm font-semibold">Language: </label>
-            <select
-              value={language}
-              className="border p-3 rounded bg-transparent"
-              onChange={handleLanguageChange} // usese the custom handler instead of setLanguage
-              disabled={isCountdownActive}
-            >
-              {Object.keys(languageOptions).map((lang) => (
-                <option key={lang} value={lang}>
-                  {lang}
-                </option>
-              ))}
-            </select>
+
+            {/* Language Selector */}
+            <div className="mt-2 shrink-0">
+              <label className="text-sm font-semibold mr-2">Language: </label>
+              <select
+                value={language}
+                className="border p-2 rounded bg-transparent"
+                onChange={handleLanguageChange}
+                disabled={isCountdownActive}
+              >
+                {Object.keys(languageOptions).map((lang) => (
+                  <option key={lang} value={lang}>
+                    {lang}
+                  </option>
+                ))}
+              </select>
             
-            {/* MICROPHONE BUTTON */}
-            {matchType === "explanation" && (
-              <div className="flex items-center space-x-2 ml-4">
+              {/* MICROPHONE BUTTON - keeping main's logic with codeEditor_Changes styling */}
+              {matchType === "explanation" && (
+                <span className="inline-flex items-center space-x-2 ml-4">
+                  <button 
+                    onClick={toggleMicrophone}
+                    className={`px-4 py-1 rounded text-md font-semibold flex items-center space-x-2 ${
+                      isMicrophoneOn 
+                        ? 'bg-red-600 hover:bg-red-700' 
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    } text-white`}
+                    disabled={isCountdownActive}
+                  >
+                    <span>{isMicrophoneOn ? '🎤 Stop Recording' : '🎤 Start Recording'}</span>
+                  </button>
+                  {isMicrophoneOn && (
+                    <span className="text-green-500 animate-pulse">● Recording...</span>
+                  )}
+                </span>
+              )}
+
+              {/* I'M DONE BUTTON for explanation match */}
+              {matchType === "explanation" && (
                 <button 
-                  onClick={toggleMicrophone}
-                  className={`px-4 py-1 rounded text-md font-semibold flex items-center space-x-2 ${
-                    isMicrophoneOn 
-                      ? 'bg-red-600 hover:bg-red-700' 
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white`}
-                  disabled={isCountdownActive}
+                  className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold ml-2
+                    disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  onClick={handlePlayerDone}
+                  disabled={!hasSubmittedOnce}
                 >
-                  <span>{isMicrophoneOn ? '🎤 Stop Recording' : '🎤 Start Recording'}</span>
+                  ✓ I'M DONE
                 </button>
-                {isMicrophoneOn && (
-                  <span className="text-green-500 animate-pulse">● Recording...</span>
-                )}
-              </div>
-            )}
+              )}
+            </div>
 
-
-            {matchType === "explanation" && (
-                <button 
-                    className="px-4 py-1 bg-green-600 text-white rounded text-md font-semibold 
-               disabled:bg-gray-400 disabled:cursor-not-allowed"
-                    onClick={handlePlayerDone}
-                    disabled={!hasSubmittedOnce}
-                >
-                    ✓ I'M DONE
-                </button>
-            )}
-
-            {/* SHOW MICROPHONE ERROS */}
+            {/* SHOW MICROPHONE ERRORS */}
             {microphoneError && (
               <div className="mt-2 p-2 bg-red-100 text-red-700 rounded">
                 {microphoneError}
@@ -650,7 +731,7 @@ const CodeEditor = ({ match_id }) => {
             )}
 
             {/* SHOW TRANSCRIPT PREVIEW */}
-            {matchType === "explanation"  && explanationTranscript && (
+            {matchType === "explanation" && explanationTranscript && (
               <div className="mt-4 p-3 bg-[#1E1E1E] rounded border border-[#444444]">
                 <h3 className="text-sm font-semibold mb-2">Your Explanation Transcript:</h3>
                 <p className="text-xs text-[#CCCCCC] max-h-20 overflow-y-auto">
@@ -658,75 +739,110 @@ const CodeEditor = ({ match_id }) => {
                 </p>
               </div>
             )}
-            <Editor
-              className="mt-4 rounded"
-              height="500px"
-              defaultLanguage={language}
-              language={language}
-              value={sourceCode}
-              onChange={(value) => setSourceCode(value)}
-              theme="vs-dark"
-              options={{ readOnly: isCountdownActive }}
-            />
-            <textarea
-              placeholder="Custom input (stdin)"
-              value={customInput}
-              onChange={(e) => setCustomInput(e.target.value)}
-              className="w-full bg-[#2D2D2D] h-20 border p-2 font-mono rounded mt-6"
-              disabled={isCountdownActive}
-            />
-            <div className="mt-4">
-              <h2 className="font-bold text-lg">Output:</h2>
-              {/* Runtime Error Display */}
-              {outputInfo.status === 11 && (
-                <div className="bg-red-100 text-red-700 p-3 rounded">
-                  <h4>Runtime Error LIL BRO</h4>
-                  <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
-                  <h4>First FAILED Testcase</h4>
-                  <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
-                  <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
-                  <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
-                </div>
-              )}
-              {/* Success No-Error Display */}
-              {outputInfo.status === 3 && (
-                <div className="bg-green-100 text-green-800 p-3 rounded">
-                  🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
-                  <h4>First FAILED Testcase</h4>
-                  <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
-                  <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
-                  <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
-                </div>
-              )}
 
-              <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
-                Time: {time} ms, Memory: {memory} kb
-                {Array.isArray(output) ? (
-                  output.map((line, index) => <div key={index}>{line}</div>)
-                ) : (
-                  <pre>{}</pre>
-                )}
+            {/* Editor + IO */}
+            <div className="mt-2 flex-1 min-h-0 flex flex-col min-w-0">
+              {/* Editor with fixed height */}
+              <div
+                ref={editorContainerRef}
+                className="flex-1 min-h-0 rounded overflow-hidden"
+                style={{ minHeight: '300px' }}
+              >
+                <Editor
+                  onMount={onMount}
+                  height="100%"
+                  width="100%"
+                  language={language}
+                  value={sourceCode}
+                  onChange={(value) => setSourceCode(value)}
+                  theme="vs-dark"
+                  options={{
+                    automaticLayout: false,
+                    readOnly: isCountdownActive,
+                    wordWrap: "on",
+                    minimap: { enabled: false },
+                    scrollBeyondLastLine: false,
+                    fontSize: 14,
+                    lineHeight: 20,
+                  }}
+                />
               </div>
-              <pre className="p-4 rounded whitespace-pre-wrap">
-                {output}
-              </pre>
+
+              {/* Custom input */}
+              <textarea
+                placeholder="Custom input (stdin)"
+                value={customInput}
+                onChange={(e) => setCustomInput(e.target.value)}
+                className="w-full bg-[#2D2D2D] h-20 border p-2 font-mono rounded mt-3 resize-none"
+                disabled={isCountdownActive}
+              />
+
+              {/* Output */}
+              <div className="mt-4">
+                <h2 className="font-bold text-lg">Output:</h2>
+                
+                {/* Runtime Error Display */}
+                {outputInfo.status === 11 && (
+                  <div className="bg-red-100 text-red-700 p-3 rounded">
+                    <h4>Runtime Error LIL BRO</h4>
+                    <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
+                    <h4>First FAILED Testcase</h4>
+                    <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
+                    <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
+                    <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                  </div>
+                )}
+
+                {/* Success No-Error Display */}
+                {outputInfo.status === 3 && (
+                  <div className="bg-green-100 text-green-800 p-3 rounded">
+                    🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
+                    <h4>First FAILED Testcase</h4>
+                    <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
+                    <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
+                    <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                  </div>
+                )}
+
+                <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
+                  Time: {time} ms, Memory: {memory} kb
+                  {Array.isArray(output) ? (
+                    output.map((line, index) => <div key={index}>{line}</div>)
+                  ) : (
+                    <pre>{}</pre>
+                  )}
+                </div>
+                <pre className="p-4 rounded whitespace-pre-wrap">
+                  {output}
+                </pre>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* RIGHT: Opponent Panel */}
         {showOpponentBox && (
           <div className="w-full md:w-1/2 lg:w-1/3 p-4 bg-[#1E1E1E] border-r border-[#333333] overflow-auto">
-            <div className="bg-[#2D2D2D] rounded-lg p-2 h-full">
-              <MatchTimer 
-                match_id={match_id}
-                socketRef={socketRef}
-              />
-              <h2 className="text-lg">Opponent Submissions: {opponentSubmissions}</h2>
-              <h2>Opponent Latest Testcases Passed: {oppsCurTestcasesPassed}/{totalTestcases}</h2>
-              <h2>Opponent Max Testcases Passed: {oppsMaxTestcasesPassed}/{totalTestcases}</h2>
-              <br></br>
-              <h2>My Submissions: {userSubmissions}</h2>
-              <h2>My Latest Testcassed Passed: {userCurTestcasesPassed}/{totalTestcases}</h2>
-              <h2>My Max Testcases Passed: {userMaxTestcasesPassed}/{totalTestcases}</h2>
+            <div className="bg-[#2D2D2D] rounded-lg p-2 h-full flex flex-col">
+              <div className="shrink-0">
+                <MatchTimer 
+                  match_id={match_id}
+                  socketRef={socketRef}
+                />
+              </div>
+              <div className="flex-1 overflow-auto">
+                <MatchProgressGraph
+                  userSubmissions={userSubmissions}
+                  userCurTestcasesPassed={userCurTestcasesPassed}
+                  userMaxTestcasesPassed={userMaxTestcasesPassed}
+                  totalTestcases={totalTestcases}
+                  opponentSubmissions={opponentSubmissions}
+                  oppsCurTestcasesPassed={oppsCurTestcasesPassed}
+                  oppsMaxTestcasesPassed={oppsMaxTestcasesPassed}
+                  match_id={match_id}
+                  socketRef={socketRef}
+                />
+              </div>
             </div>
           </div>
         )}

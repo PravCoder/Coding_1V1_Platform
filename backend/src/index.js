@@ -410,6 +410,75 @@ io.on("connection", (socket) => {
       }
     });
 
+
+
+    // Video streaming handlers
+    socket.on("video_stream_ready", async (data) => {
+        console.log(`Video stream ready for match: ${data.match_id}`);
+        try {
+            const match = await MatchModel.findById(data.match_id);
+            if (match && match.match_str) {
+                console.log(`Notifying other players in room: ${match.match_str}`);
+                // Notify other players in the same match that video is available
+                socket.to(match.match_str).emit("video_stream_ready");
+            } else {
+                console.log(`Match not found or no match_str for: ${data.match_id}`);
+            }
+        } catch (error) {
+            console.error("Error in video_stream_ready:", error);
+        }
+    });
+
+    socket.on("video_offer", async (data) => {
+        console.log(`Video offer received for match: ${data.match_id}`);
+        try {
+            const match = await MatchModel.findById(data.match_id);
+            if (match && match.match_str) {
+                console.log(`Forwarding offer to room: ${match.match_str}`);
+                // Forward the offer to the other player in the match
+                socket.to(match.match_str).emit("video_offer", data.offer);
+            } else {
+                console.log(`Match not found or no match_str for: ${data.match_id}`);
+            }
+        } catch (error) {
+            console.error("Error in video_offer:", error);
+        }
+    });
+
+    socket.on("video_answer", async (data) => {
+        console.log(`Video answer received for match: ${data.match_id}`);
+        try {
+            const match = await MatchModel.findById(data.match_id);
+            if (match && match.match_str) {
+                console.log(`Forwarding answer to room: ${match.match_str}`);
+                // Forward the answer to the other player in the match
+                socket.to(match.match_str).emit("video_answer", data.answer);
+            } else {
+                console.log(`Match not found or no match_str for: ${data.match_id}`);
+            }
+        } catch (error) {
+            console.error("Error in video_answer:", error);
+        }
+    });
+
+    socket.on("ice_candidate", async (data) => {
+        console.log(`ICE candidate received for match: ${data.match_id}`);
+        try {
+            const match = await MatchModel.findById(data.match_id);
+            if (match && match.match_str) {
+                console.log(`Forwarding ICE candidate to room: ${match.match_str}`);
+                // Forward the ICE candidate to the other player in the match
+                socket.to(match.match_str).emit("ice_candidate", data.candidate);
+            } else {
+                console.log(`Match not found or no match_str for: ${data.match_id}`);
+            }
+        } catch (error) {
+            console.error("Error in ice_candidate:", error);
+        }
+    });
+
+    
+
     // To rejoin socket to match-str-room. Handle reconnection when a player refreshes or rejoins
     socket.on("rejoin_match", async (data) => {
         const match = await MatchModel.findById(data.match_id); // this query is slowing down application for every submission, so use caching

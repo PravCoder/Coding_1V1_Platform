@@ -61,7 +61,7 @@ const matches_timer_data  = {};
 // track which playesr are in which matches, player_id -> match_id
 const player_match_tracking = new Map();
 
-const TIME_PER_MATCH = 10 * 60;  // minutes * 60 seconds, just change the number of minutes.
+let TIME_PER_MATCH = 10 * 60;  // minutes * 60 seconds, just change the number of minutes.
 
 // helper function to clear match timer and prevent flickers
 const clearMatchTimer = (match_id) => {
@@ -477,7 +477,7 @@ io.on("connection", (socket) => {
         }
     });
 
-    
+
 
     // To rejoin socket to match-str-room. Handle reconnection when a player refreshes or rejoins
     socket.on("rejoin_match", async (data) => {

@@ -195,7 +195,7 @@ const language_id_to_name = {
   54:"cpp",    // make sure these are keys in 
   62:"java",
 };
-// HELPER: takes in the raw output for java/c++ code and outputs in format we need to compare 
+// HELPER: takes in the raw output for c++ code and outputs in format we need to compare 
 function parseRawOutput(rawOutput, returnType) {
     const trimmed = rawOutput.trim();
     
@@ -353,6 +353,7 @@ router.post("/submission", async (req, res) => {
             if (response.data.stdout) {
                 let userOutput;
                 
+                // we need to parse the raw output returned by the API so we can compare
                 if (language_name === "python") {
                     // Python outputs JSON, so parse it
                     userOutput = JSON.parse(response.data.stdout.trim());
@@ -380,7 +381,9 @@ router.post("/submission", async (req, res) => {
                     output_information.first_failed_tc_user_output =  JSON.stringify(userOutput);  // have to stringify to display
                     submission_result = "failed";
                     console.log("❌ Test case failed");
-                    break;  // if testcase is failed break aout of this loop and go to updating the my/opp variables
+                    // break;  // if testcase is failed break aout of this loop and go to updating the my/opp variables
+                    // dont break if they failed this testcase, keep checking against the testcases, but only display the first failed testcase to them so they can fix
+                    // keep incrementing or not incrementing num_testcases_passed above
                 }
 
             }

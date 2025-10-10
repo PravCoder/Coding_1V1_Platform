@@ -376,8 +376,8 @@ router.post("/submission", async (req, res) => {
                     console.log("✅ Test case passed");
                 } else {
                     output_information.first_failed_tc_inp = cur_testcase.input;  // if testcase failed update, first testcase failed variables inside testcase loop
-                    output_information.first_failed_tc_output = cur_testcase.output;
-                    output_information.first_failed_tc_user_output = userOutput;  // ✅ FIX: Store parsed object, not string
+                    output_information.first_failed_tc_output =  JSON.stringify(cur_testcase.output);
+                    output_information.first_failed_tc_user_output =  JSON.stringify(userOutput);  // have to stringify to display
                     submission_result = "failed";
                     console.log("❌ Test case failed");
                     break;  // if testcase is failed break aout of this loop and go to updating the my/opp variables
@@ -394,7 +394,8 @@ router.post("/submission", async (req, res) => {
             output_information.first_failed_tc_inp = JSON.stringify(output_information.first_failed_tc_inp);
         }
         if (output_information.first_failed_tc_output) {
-            output_information.first_failed_tc_output = JSON.stringify(output_information.first_failed_tc_output);
+            console.log("does this print");
+            // output_information.first_failed_tc_output = JSON.stringify(output_information.first_failed_tc_output);
         }
         if (output_information.first_failed_tc_user_output && typeof output_information.first_failed_tc_user_output === 'object') {
             output_information.first_failed_tc_user_output = JSON.stringify(output_information.first_failed_tc_user_output);
@@ -462,6 +463,8 @@ router.post("/submission", async (req, res) => {
         
         // FIX: SINGLE SAVE OPERATION AT THE END (instead of multiple saves)
         await match.save();
+
+        console.log("output_information.first_failed_tc_user_output: ", output_information.first_failed_tc_user_output);
 
         // returning updated-match obj with opponent-updates back to client which emits to index.js with get-opponent-update-event
         res.status(201).json({

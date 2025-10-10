@@ -77,6 +77,7 @@ class Solution {
         return temp;
     },
 
+    // NOTE: deprecated
     java: (problem) =>{
         const {function_name, parameters, return_type} = problem;  // from problem-obj
 

@@ -322,7 +322,8 @@ const CodeEditor = ({ match_id }) => {
                 userID:getCurrentUser(), explanation_transcript:explanationTranscript}); // pass in explanation transcript after submission to route
 
       console.log("match-id: " + match_id);
-      console.log("submission results: " + result.data.fir + " out: " + output);
+      // console.log("submission results: " + result.data.fir + " out: " + output);
+      console.log("output info: ", result.data.output_information);
       setOutputInfo(result.data.output_information);
 
       setOutput(result.data.display_output.split("\n"));
@@ -801,12 +802,12 @@ const CodeEditor = ({ match_id }) => {
                 {/* Runtime Error Display */}
                 {outputInfo.status === 11 && (
                   <div className="bg-red-100 text-red-700 p-3 rounded">
-                    <h4>Runtime Error LIL BRO</h4>
+                    <b><h4>Runtime Error LIL BRO</h4></b>
                     <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
-                    <h4>First FAILED Testcase</h4>
-                    <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
-                    <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
-                    <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                    <b><h4>---FIRST FAILED TESTCASE---</h4></b>
+                    <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
+                    <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
+                    <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
                   </div>
                 )}
 
@@ -814,23 +815,23 @@ const CodeEditor = ({ match_id }) => {
                 {outputInfo.status === 3 && (
                   <div className="bg-green-100 text-green-800 p-3 rounded">
                     🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
-                    <h4>First FAILED Testcase</h4>
-                    <h4>INPUT: {outputInfo.first_failed_tc_inp}</h4>
-                    <h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4>
-                    <h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4>
+                    <b><h4>---FIRST FAILED TESTCASE---</h4></b>
+                    <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
+                    <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
+                    <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
                   </div>
                 )}
 
-                <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
+                {/* <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
                   Time: {time} ms, Memory: {memory} kb
                   {Array.isArray(output) ? (
                     output.map((line, index) => <div key={index}>{line}</div>)
                   ) : (
                     <pre>{}</pre>
                   )}
-                </div>
+                </div> */}
                 <pre className="p-4 rounded whitespace-pre-wrap">
-                  {output}
+                  {/* {output} */}
                 </pre>
               </div>
             </div>

@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { Box, HStack } from "@chakra-ui/react";
 import { useNavigate } from "react-router-dom";
+import React from 'react';
 
 import { Editor } from "@monaco-editor/react";
 import { CODE_SNIPPETS, theme } from "../constants/api";
@@ -614,6 +615,20 @@ const CodeEditor = ({ match_id }) => {
 
 
   console.log("outputinfo: ", outputInfo);
+
+  const formatTextWithNewlines = (text) => {
+    // Split the string by the newline character to get an array of lines
+    const lines = text.split('\n');
+
+    // Map over the array, returning each line followed by a <br />
+    return lines.map((line, index) => (
+      <React.Fragment key={index}>
+        {line}
+        {index < lines.length - 1 && <br />}
+      </React.Fragment>
+    ));
+  };
+
   return (
     <div className={`h-screen bg-[#1E1E1E] text-white ${isCountdownActive ? 'pointer-events-none' : ''}`}>
       {/* Fixed height grid with proper proportions */}
@@ -627,12 +642,13 @@ const CodeEditor = ({ match_id }) => {
             </div>
             <div className="text-[#CCCCCC] mb-6">
               <h4>Description: {problem.description}</h4>
-              <div className="m-6">
-                <div className="p-4 bg-[#1E1E1E] border-r border-[#333333]">
-                  <h3 className="text-[#CCCCCC] font-semibold mb-2">EXAMPLES:</h3>
-                  {problem.examples}
-                </div>
-              </div>         
+              <br></br>
+              <h3 className="text-[#CCCCCC] font-semibold mb-2">EXAMPLES:</h3>
+                {problem && problem.examples && (
+                  <div>
+                    {formatTextWithNewlines(problem.examples)}
+                  </div>
+                )}         
             </div>
           </div>
         </div>

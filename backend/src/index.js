@@ -131,11 +131,13 @@ io.on("connection", (socket) => {
             console.log("player2: " + player2.player_id + "\n");
 
             // OPTION 1: select random problem
-            const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
-            const random_problem = problem_docs[0];
+            // const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
+            // const random_problem = problem_docs[0];
 
             // OPTION 2: for testing hardcode problem object you want to test
-            // const random_problem = await ProblemModel.findById("68e99e42b6eb8cb274f7b544");
+            // matrix diagonal: 68e9b0a3b6eb8cb274f7b548
+            // lucky number: 68e9b5f8b6eb8cb274f7b54a
+            const random_problem = await ProblemModel.findById("68e9b5f8b6eb8cb274f7b54a");
 
             console.log("random_problem: " + random_problem._id);
 

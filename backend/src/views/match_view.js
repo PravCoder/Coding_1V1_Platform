@@ -245,6 +245,7 @@ router.post("/submission", async (req, res) => {
     const {sourceCode, languageId, match_id, userID, explanation_transcript} = req.body;
     console.log("Explanation after submission: ", explanation_transcript);
 
+
     try {
 
         const match = await MatchModel.findById(match_id).populate({path: "problem", populate: { path: "testcases" }, }); // this query is slowing down application for every submission, so use caching
@@ -254,7 +255,10 @@ router.post("/submission", async (req, res) => {
         const language_name = getLanguageName(languageId);  // get the name of the language from its id
         // wrap the code userCode-template with input parsing, output printing, etc to its runnable
         const completeWrappedCode = codeWrappers[language_name](match.problem, sourceCode); 
-        console.log("Complete Wrapped code being sent to Judge0:\n", completeWrappedCode);
+        console.log("Wrapped code length:", completeWrappedCode.length);
+        console.log("Wrapped code first 500 chars:\n", completeWrappedCode.substring(0, 500));
+
+        
 
         
         // few global variables relating to the entire submission not just a single local testcase
@@ -281,7 +285,7 @@ router.post("/submission", async (req, res) => {
             
 
             // the input we pass into the api
-            let stdin;
+            let stdin_input;
             if (language_id_to_name[languageId] == "python") {
                 // make the testcase input into structured json for python
                 stdin_input = JSON.stringify(cur_testcase.input);  
@@ -289,6 +293,7 @@ router.post("/submission", async (req, res) => {
                 // for java and cpp the api expects the stdin_input in a different format
                 stdin_input = generateStdinInput(cur_testcase, match.problem.parameters, language_id_to_name[languageId]);
             }
+            
             
 
             // send request to judge0 with given wrapped code and testcase input
@@ -484,6 +489,9 @@ router.post("/submission", async (req, res) => {
 
     } catch (error) { 
         console.log("Error submitting code: " + error.message);
+        console.log("Error submitting code: " + error.message);
+        console.log("Error response data:", error.response?.data);
+        console.log("Error response status:", error.response?.status);
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 

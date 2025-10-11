@@ -103,6 +103,7 @@ ${output_handle}`;
 #include <string>
 #include <algorithm>
 #include <unordered_map>
+#include <climits>
 using namespace std;
 
 ${userCode}

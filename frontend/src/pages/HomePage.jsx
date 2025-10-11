@@ -5,6 +5,8 @@ import { useCookies } from "react-cookie";
 import getCurrentUser from "../hooks/getCurrentUser";
 import io from "socket.io-client";
 import { FaMicrophone, FaVideo, FaCamera, FaSpinner } from "react-icons/fa";
+import Navbar from '../components/Navbar';
+
 // connect to server from client-side establishes socketio connection with backend running on 3001
 const socket = io.connect("http://localhost:3001"); 
 
@@ -79,6 +81,7 @@ const HomePage = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-black">
+       <Navbar />
       {/* User ID display in top right */}
       <div className="absolute top-4 right-4">
         <p className="text-white text-sm bg-gray-800 px-3 py-1 rounded-full">

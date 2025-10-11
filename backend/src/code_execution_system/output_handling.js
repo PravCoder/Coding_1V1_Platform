@@ -27,7 +27,12 @@ const generateOutputHandling = (language, return_type) => {
         }`;
         } else {
             // Simple type output
-            return 'cout << result;';
+            // For boolean return -> But cout << result; prints 1 or 0 → does not match JSON true/false → all testcases fail, Fix: Print true/false as string in C++ output handling.
+            if (cppReturnType === "bool") {
+                return 'cout << (result ? "true" : "false");';
+            } else {
+                return 'cout << result;';
+            }
         }
     }
 }

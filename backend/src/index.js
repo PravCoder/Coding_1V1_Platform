@@ -130,9 +130,13 @@ io.on("connection", (socket) => {
             console.log("player1: " + player1.player_id );
             console.log("player2: " + player2.player_id + "\n");
 
-            // select random problem
+            // OPTION 1: select random problem
             const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
             const random_problem = problem_docs[0];
+
+            // OPTION 2: for testing hardcode problem object you want to test
+            // const random_problem = await ProblemModel.findById("68e99e42b6eb8cb274f7b544");
+
             console.log("random_problem: " + random_problem._id);
 
             // send post-request to create match once we have selected/connected 2 players & problem

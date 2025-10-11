@@ -47,53 +47,57 @@ ${output_handle}`;
     },
 
     cpp: (problem, userCode) => {
-        const {function_name, parameters} = problem;
+    const {function_name, parameters} = problem;
 
-        // Generate input parsing for C++
-        const inputParsingCode = parameters.map(param => {
-            const cppType = dataTypeSystem[param.type]?.cpp || param.type;
-            
-            if (cppType.includes('vector<vector<')) {
-                // 2D vector parsing
-                return `    ${cppType} ${param.name};
-        int rows, cols;
-        cin >> rows >> cols;
-        ${param.name}.resize(rows, vector<int>(cols));
-        for(int i = 0; i < rows; i++) {
-            for(int j = 0; j < cols; j++) {
-                cin >> ${param.name}[i][j];
-            }
-        }`;
-            } else if (cppType.includes('vector<')) {
-                // 1D vector parsing
-                return `    ${cppType} ${param.name};
-        int size;
-        cin >> size;
-        ${param.name}.resize(size);
-        for(int i = 0; i < size; i++) {
-            cin >> ${param.name}[i];
-        }`;
-            } else {
-                // Simple type parsing
-                return `    ${cppType} ${param.name};
-        cin >> ${param.name};`;
-            }
-        }).join("\n");
-
-        // Determine if user code is a class or standalone function
-        const isClass = userCode.includes('class Solution') || userCode.includes('class ');
+    // Generate input parsing for C++
+    const inputParsingCode = parameters.map(param => {
+        const cppType = dataTypeSystem[param.type]?.cpp || param.type;
         
-        let function_call;
-        if (isClass) {
-            function_call = `solution.${function_name}(${parameters.map(p => p.name).join(', ')})`;
-        } else {
-            function_call = `${function_name}(${parameters.map(p => p.name).join(', ')})`;
+        if (cppType.includes('vector<vector<')) {
+            // 2D vector parsing
+            return `    ${cppType} ${param.name};
+    int rows, cols;
+    cin >> rows >> cols;
+    ${param.name}.resize(rows, vector<int>(cols));
+    for(int i = 0; i < rows; i++) {
+        for(int j = 0; j < cols; j++) {
+            cin >> ${param.name}[i][j];
         }
+    }`;
+        } else if (cppType.includes('vector<')) {
+            // 1D vector parsing
+            return `    ${cppType} ${param.name};
+    int size;
+    cin >> size;
+    ${param.name}.resize(size);
+    for(int i = 0; i < size; i++) {
+        cin >> ${param.name}[i];
+    }`;
+        } else if (cppType === 'string') {
+            // string input: read full line
+            return `    ${cppType} ${param.name};
+    getline(cin, ${param.name});`;
+        } else {
+            // numeric or boolean input: use cin >>
+            return `    ${cppType} ${param.name};
+    cin >> ${param.name};`;
+        }
+    }).join("\n");
 
-        // get code that prints output for c++
-        const output_handle = generateOutputHandling("cpp", problem.return_type);
+    // Determine if user code is a class or standalone function
+    const isClass = userCode.includes('class Solution') || userCode.includes('class ');
+    
+    let function_call;
+    if (isClass) {
+        function_call = `solution.${function_name}(${parameters.map(p => p.name).join(', ')})`;
+    } else {
+        function_call = `${function_name}(${parameters.map(p => p.name).join(', ')})`;
+    }
 
-        const temp = `
+    // get code that prints output for c++
+    const output_handle = generateOutputHandling("cpp", problem.return_type);
+
+    const temp = `
 #include <iostream>
 #include <vector>
 #include <string>
@@ -120,8 +124,9 @@ ${inputParsingCode}
     return 0;
 }`;
 
-        return temp;
-    },
+    return temp;
+},
+
 
     java: (problem, userCode) => {
 

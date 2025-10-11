@@ -171,7 +171,6 @@ function generateStdinInput(cur_testcase, parameters, language) {
         const rows = value.length;
         const cols = value[0].length;
         stdinLines.push(`${rows} ${cols}`);
-        
         for (const row of value) {
           stdinLines.push(row.join(' '));
         }
@@ -180,8 +179,11 @@ function generateStdinInput(cur_testcase, parameters, language) {
         stdinLines.push(value.length.toString());
         stdinLines.push(value.join(' '));
       }
+    } else if (typeof value === 'string') {
+      // Raw string: send as-is, no quotes
+      stdinLines.push(value);
     } else {
-      // Simple value: Just the value on its own line
+      // Simple value: number, boolean
       stdinLines.push(value.toString());
     }
   }
@@ -189,6 +191,7 @@ function generateStdinInput(cur_testcase, parameters, language) {
   // join all lines with newline characters
   return stdinLines.join('\n');
 }
+
 // HELPER: converts from id to name
 const language_id_to_name = {
   71:"python",
@@ -480,7 +483,7 @@ router.post("/submission", async (req, res) => {
         });
 
     } catch (error) { 
-        console.log("Error submitting code: " + error);
+        console.log("Error submitting code: " + error.message);
         res.status(500).json({ message: "unable to process submission", error: error.message });
     }
 

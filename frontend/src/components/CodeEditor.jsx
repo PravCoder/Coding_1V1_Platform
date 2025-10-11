@@ -67,6 +67,8 @@ const CodeEditor = ({ match_id }) => {
   const [microphoneError, setMicrophoneError] = useState(null);   // if there is a microphone error
   const [hasSubmittedOnce, setHasSubmittedOnce] = useState(false);  // we want to know if the user submitted at least once so we can enable the "IM DONE" button for explanation match.
   
+  // loading for submission variable state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Initialize matchStartTime from localStorage or create new one
   const [matchStartTime, setMatchStartTime] = useState(() => {
@@ -316,11 +318,12 @@ const CodeEditor = ({ match_id }) => {
   const handleSubmitCode = async (event) => {
     console.log("SUBMITTTTTTTING COOOOODE----------");
     event.preventDefault();
+    setIsSubmitting(true); // set loading fro submission
     try {
       console.log("transcript before sending: ", explanationTranscript);
       const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
                 userID:getCurrentUser(), explanation_transcript:explanationTranscript}); // pass in explanation transcript after submission to route
-                
+
       console.log("match-id: " + match_id);
       // console.log("submission results: " + result.data.fir + " out: " + output);
       console.log("output info: ", result.data.output_information);
@@ -380,6 +383,8 @@ const CodeEditor = ({ match_id }) => {
 
     } catch (error) {
       // console.error(error.response.data.message);  
+    } finally {
+      setIsSubmitting(false);   // stop loading for submission
     }
   };
 
@@ -798,41 +803,51 @@ const CodeEditor = ({ match_id }) => {
               {/* Output */}
               <div className="mt-4">
                 <h2 className="font-bold text-lg">Output:</h2>
-                
-                {/* Runtime Error Display */}
-                {outputInfo.status === 11 && (
-                  <div className="bg-red-100 text-red-700 p-3 rounded">
-                    <b><h4>Runtime Error LIL BRO</h4></b>
-                    <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
-                    <b><h4>---FIRST FAILED TESTCASE---</h4></b>
-                    <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
-                    <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
-                    <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
+                {isSubmitting ? (
+                  // Loading state
+                  <div className="bg-blue-50 border-2 border-blue-400 rounded p-6 text-center">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-blue-600 mx-auto mb-4"></div>
+                    <p className="text-blue-800 font-semibold text-lg">Running your code...</p>
+                    <p className="text-blue-600 text-sm mt-2">Testing against all test cases</p>
                   </div>
-                )}
+                ) : (
+                  <>
+                    {/* Runtime Error Display */}
+                    {outputInfo.status === 11 && (
+                      <div className="bg-red-100 text-red-700 p-3 rounded">
+                        <b><h4>Runtime Error LIL BRO</h4></b>
+                        <pre>{outputInfo.stderr ?? outputInfo.compileOutput}</pre>
+                        <b><h4>---FIRST FAILED TESTCASE---</h4></b>
+                        <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
+                        <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
+                        <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
+                      </div>
+                    )}
 
-                {/* Success No-Error Display */}
-                {outputInfo.status === 3 && (
-                  <div className="bg-green-100 text-green-800 p-3 rounded">
-                    🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
-                    <b><h4>---FIRST FAILED TESTCASE---</h4></b>
-                    <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
-                    <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
-                    <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
-                  </div>
-                )}
+                    {/* Success No-Error Display */}
+                    {outputInfo.status === 3 && (
+                      <div className="bg-green-100 text-green-800 p-3 rounded">
+                        🆗 Code Compiled Sucessfully – {outputInfo.num_testcases_passed}/{outputInfo.total_testcases} 
+                        <b><h4>---FIRST FAILED TESTCASE---</h4></b>
+                        <b><h4>INPUT: {outputInfo.first_failed_tc_inp}</h4></b>
+                        <b><h4>OUTPUT: {outputInfo.first_failed_tc_output}</h4></b>
+                        <b><h4>YOUR OUTPUT: {outputInfo.first_failed_tc_user_output}</h4></b>
+                      </div>
+                    )}
 
-                {/* <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
-                  Time: {time} ms, Memory: {memory} kb
-                  {Array.isArray(output) ? (
-                    output.map((line, index) => <div key={index}>{line}</div>)
-                  ) : (
-                    <pre>{}</pre>
+                    {/* <div style={{ height: "9vh", padding: "0.5rem", color: isError ? "green" : "", border: "1px solid", borderRadius: "0.25rem", borderColor: isError ? "#" : "#" }}>
+                      Time: {time} ms, Memory: {memory} kb
+                      {Array.isArray(output) ? (
+                        output.map((line, index) => <div key={index}>{line}</div>)
+                      ) : (
+                        <pre>{}</pre>
+                      )}
+                    </div> */}
+                    <pre className="p-4 rounded whitespace-pre-wrap">
+                      {/* {output} */}
+                    </pre>
+                  </>
                   )}
-                </div> */}
-                <pre className="p-4 rounded whitespace-pre-wrap">
-                  {/* {output} */}
-                </pre>
               </div>
             </div>
           </div>

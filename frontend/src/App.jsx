@@ -5,6 +5,8 @@ import RegisterPage from './pages/RegisterPage';
 import LoginPage from './pages/LoginPage';
 import MatchPage from './pages/MatchPage';
 import MatchOutcomePage from './pages/MatchOutcomePage';
+import StatsPage from './pages/StatsPage';
+
 
 
 
@@ -24,6 +26,9 @@ function App() {
           <Route path="/match/:match_id" element={<MatchPage></MatchPage>} /> 
 
           <Route path="/match-outcome/:match_id" element={<MatchOutcomePage></MatchOutcomePage>} /> 
+
+
+          <Route path="/stats" element={<StatsPage></StatsPage>} />
           
 
         </Routes>

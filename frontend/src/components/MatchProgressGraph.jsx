@@ -10,7 +10,8 @@ const MatchProgressGraph = ({
   userMaxTestcasesPassed,
   totalTestcases,
   match_id,
-  socketRef
+  socketRef,
+  match
 }) => {
   const oppProgressPercentage = totalTestcases > 0 ? (oppsCurTestcasesPassed / totalTestcases) * 100 : 0;
   const oppMaxProgressPercentage = totalTestcases > 0 ? (oppsMaxTestcasesPassed / totalTestcases) * 100 : 0;
@@ -27,7 +28,11 @@ const MatchProgressGraph = ({
       </div>
 
       {/* Video Camera Component */}
-      <VideoCamera match_id={match_id} socketRef={socketRef} />
+      <VideoCamera 
+        match_id={match_id} 
+        socketRef={socketRef} 
+        shouldInitializeCamera={match?.streaming || false}
+      />
 
       {/* Progress Bars Section */}
       {/* User Progress */}

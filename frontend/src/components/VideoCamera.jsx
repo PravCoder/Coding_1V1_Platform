@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import io from 'socket.io-client';
 
-const VideoCamera = ({ match_id, socketRef }) => {
+const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) => {
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const localStreamRef = useRef(null);
@@ -205,6 +205,13 @@ const VideoCamera = ({ match_id, socketRef }) => {
     }
   };
 
+  // Auto-initialize camera when shouldInitializeCamera is true
+  useEffect(() => {
+    if (shouldInitializeCamera && connectionStatus === 'disconnected') {
+      initializeLocalStream();
+    }
+  }, [shouldInitializeCamera]);
+
   // Setup socket listeners
   useEffect(() => {
     if (!socketRef.current) return;
@@ -322,19 +329,6 @@ const VideoCamera = ({ match_id, socketRef }) => {
       {/* Controls */}
       <div className="flex justify-center gap-2 mb-3">
         <button
-          onClick={initializeLocalStream}
-          className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-            connectionStatus === 'local_ready' || connectionStatus === 'connected'
-              ? 'bg-gray-600 text-gray-300 cursor-not-allowed'
-              : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
-          disabled={connectionStatus === 'local_ready' || connectionStatus === 'connected'}
-        >
-          {connectionStatus === 'local_ready' || connectionStatus === 'connected' ? 'Connected' : 'Start Camera'}
-          
-        </button>
-
-        <button
           onClick={toggleVideo}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
             isVideoEnabled
@@ -345,11 +339,6 @@ const VideoCamera = ({ match_id, socketRef }) => {
         >
           {isVideoEnabled ? '📹' : '📹'}
         </button>
-
-
-
-
-        
       </div>
 
       

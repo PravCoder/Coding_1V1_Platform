@@ -16,6 +16,8 @@ const HomePage = () => {
   const [isSpeechToText, setIsSpeechToText] = useState(false); // is this a explanation match
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
+  const [cameraError, setCameraError] = useState(null);
   const userID = getCurrentUser();
   const navigate = useNavigate();
 
@@ -26,17 +28,56 @@ const HomePage = () => {
     socket.emit("find_match", { player_id: userID, explanation_match:isSpeechToText, streaming:isStreaming });
   };
 
-  const toggleStreaming = () => {
+  // Request camera access
+  const requestCameraAccess = async () => {
+    try {
+      setCameraError(null);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+        audio: false // Don't request audio as per user requirement
+      });
+      
+      // Stop the test stream immediately since we just needed permission
+      stream.getTracks().forEach(track => track.stop());
+      
+      setCameraPermissionGranted(true);
+      console.log("Camera permission granted");
+    } catch (error) {
+      console.error("Camera permission error:", error);
+      if (error.name === 'NotAllowedError') {
+        setCameraError("Camera access denied. Please allow camera access in your browser settings.");
+      } else if (error.name === 'NotFoundError') {
+        setCameraError("No camera found. Please connect a camera.");
+      } else {
+        setCameraError("Could not access camera. Please check your settings.");
+      }
+      setCameraPermissionGranted(false);
+      return false;
+    }
+    return true;
+  };
+
+  const toggleStreaming = async () => {
     const newStreamingState = !isStreaming;
-    setIsStreaming(newStreamingState);
+    
     if (newStreamingState) {
+      // Request camera access when enabling streaming
+      const hasCameraAccess = await requestCameraAccess();
+      if (!hasCameraAccess) {
+        return; // Don't enable streaming if camera access fails
+      }
+      
+      setIsStreaming(true);
       // Streaming enabled → automatically enable video and explanation
       setIsVideoEnabled(true);
       setIsSpeechToText(true);
     } else {
       // Streaming disabled → automatically disable video and explanation
+      setIsStreaming(false);
       setIsVideoEnabled(false);
       setIsSpeechToText(false);
+      setCameraPermissionGranted(false);
+      setCameraError(null);
     }
   };
 
@@ -101,6 +142,9 @@ const HomePage = () => {
               <div className="flex items-center space-x-2">
                 <FaVideo className="text-white text-lg" />
                 <span className="text-white">Streaming</span>
+                {cameraPermissionGranted && (
+                  <span className="text-green-400 text-xs">✓ Camera Ready</span>
+                )}
               </div>
               <label className="relative inline-flex items-center cursor-pointer">
                 <input
@@ -112,6 +156,13 @@ const HomePage = () => {
                 <div className="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-700"></div>
               </label>
             </div>
+
+            {/* Camera Error Display */}
+            {cameraError && (
+              <div className="p-3 bg-red-100 text-red-700 rounded text-sm">
+                {cameraError}
+              </div>
+            )}
 
             {/* Video Toggle */}
             {/* <div className="flex items-center justify-between">

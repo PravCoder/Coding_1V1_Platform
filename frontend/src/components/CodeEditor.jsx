@@ -874,6 +874,7 @@ const CodeEditor = ({ match_id }) => {
                   oppsMaxTestcasesPassed={oppsMaxTestcasesPassed}
                   match_id={match_id}
                   socketRef={socketRef}
+                  match={match}
                 />
               </div>
             </div>

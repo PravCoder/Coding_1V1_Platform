@@ -68,12 +68,14 @@ const HomePage = () => {
       }
       
       setIsStreaming(true);
+      try { localStorage.setItem('streaming', 'true'); } catch {}
       // Streaming enabled → automatically enable video and explanation
       setIsVideoEnabled(true);
       setIsSpeechToText(true);
     } else {
       // Streaming disabled → automatically disable video and explanation
       setIsStreaming(false);
+      try { localStorage.setItem('streaming', 'false'); } catch {}
       setIsVideoEnabled(false);
       setIsSpeechToText(false);
       setCameraPermissionGranted(false);

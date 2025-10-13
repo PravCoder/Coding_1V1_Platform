@@ -9,6 +9,7 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isAudioEnabled, setIsAudioEnabled] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
+  const [initError, setInitError] = useState(null);
 
   // WebRTC configuration
   const rtcConfiguration = {
@@ -28,10 +29,15 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
   // Initialize local camera stream
   const initializeLocalStream = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setInitError('Camera API not supported in this browser');
+        setConnectionStatus('error');
+        return;
+      }
       addDebugLog('Requesting camera access...');
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-        audio: true
+        video: { facingMode: 'user' },
+        audio: false
       });
       
       localStreamRef.current = stream;
@@ -43,6 +49,7 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
       setIsAudioEnabled(true);
       setConnectionStatus('local_ready');
       addDebugLog('Camera access granted, stream ready');
+      setInitError(null);
       
       // Notify socket that local stream is ready
       if (socketRef.current) {
@@ -53,6 +60,7 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
       }
     } catch (error) {
       addDebugLog(`ERROR: Camera access failed - ${error.message}`);
+      setInitError(error?.message || 'Failed to access camera');
       setConnectionStatus('error');
     }
   };
@@ -291,6 +299,12 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
         </div>
       </div>
 
+      {initError && (
+        <div className="mb-3 p-2 text-sm rounded bg-red-100 text-red-700">
+          {initError}
+        </div>
+      )}
+
       {/* Video Grid */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         {/* Local Video */}
@@ -328,6 +342,14 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
 
       {/* Controls */}
       <div className="flex justify-center gap-2 mb-3">
+        {!localStreamRef.current && (
+          <button
+            onClick={initializeLocalStream}
+            className="px-3 py-1 rounded text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
+          >
+            Enable Camera
+          </button>
+        )}
         <button
           onClick={toggleVideo}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${

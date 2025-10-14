@@ -56,6 +56,9 @@ const MatchOutcomeInfo = ({ match_id }) => {
       socketRef.current = io("http://localhost:3001");
     }
 
+    // make sure this socket rejoins room of this match so it receives the mits from index.js so we can listen to the below
+    socketRef.current.emit("rejoin_match", { match_id });
+
     // just for opponent marking as done, we emit to this event in player_done-event listening
     socketRef.current.on("opponent_done", () => {
       console.log("Opponent marked as done");
@@ -68,7 +71,12 @@ const MatchOutcomeInfo = ({ match_id }) => {
       console.log("Both players done!");
       setWaitingForOpponent(false);
       setLoading(false);
-      setMatch(data.match);
+      // update match with populated data
+      if (data.match) {
+          setMatch(data.match);
+          setPlayer1(data.match.first_player);
+          setPlayer2(data.match.second_player);
+      }
     });
 
     return () => {

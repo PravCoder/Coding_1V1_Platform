@@ -365,7 +365,12 @@ io.on("connection", (socket) => {
         console.log("Player marked as done for match:", match_id);
         
         try {
-            const match = await MatchModel.findById(match_id);
+            // make sure its updated state is populated
+            const match = await MatchModel.findById(match_id)
+              .populate('first_player', 'username')
+              .populate('second_player', 'username')
+              .populate('winner', 'username')
+              .populate('problem', 'title');
             if (!match) return;
             
             // notify the other player

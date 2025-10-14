@@ -126,6 +126,10 @@ const MatchOutcomeInfo = ({ match_id }) => {
           <p className="text-lg"><b>Duration: {match.duration}</b></p>
         </div>
 
+
+
+        
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
           {/* Player 1 Stats */}
           <div className="border rounded-lg p-6 bg-gray-50">
@@ -159,6 +163,199 @@ const MatchOutcomeInfo = ({ match_id }) => {
             )}
           </div>
         </div>
+
+        {/* Explanation Transcripts - Only for explanation matches */}
+        {match.type === "explanation" && (
+          <div className="mt-8 space-y-6">
+            <h2 className="text-2xl font-bold text-white mb-4">Explanation Transcripts & Ratings</h2>
+            
+            {/* Player 1 Transcript & Evaluation */}
+            <div className="border rounded-lg p-6 bg-gray-50">
+              <h3 className="text-xl font-bold mb-3">{player1.username}'s Explanation</h3>
+              
+              {/* Transcript */}
+              {match.first_player_explanation_transcript ? (
+                <div className="bg-white p-4 rounded border mb-4">
+                  <p className="text-gray-800 whitespace-pre-wrap">
+                    {match.first_player_explanation_transcript}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500 italic mb-4">No explanation provided</p>
+              )}
+
+              {/* Evaluation Ratings */}
+              {match.first_player_explanation_evaluation && 
+              match.first_player_explanation_evaluation.total_score !== undefined && (
+                <div className="bg-blue-50 p-4 rounded border border-blue-200">
+                  <h4 className="font-bold text-lg mb-3 text-blue-900">Explanation Evaluation</h4>
+                  
+                  {/* Overall Score */}
+                  <div className="mb-4 p-3 bg-white rounded border-l-4 border-blue-500">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-700">Total Score</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {match.first_player_explanation_evaluation.total_score}/20
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {match.first_player_explanation_evaluation.overall_feedback}
+                    </p>
+                  </div>
+
+                  {/* Detailed Scores */}
+                  <div className="space-y-3">
+                    {/* Correctness */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Correctness</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {match.first_player_explanation_evaluation.correctness?.score || 0}/10
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.first_player_explanation_evaluation.correctness?.feedback || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Clarity */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Clarity</span>
+                        <span className="text-lg font-bold text-purple-600">
+                          {match.first_player_explanation_evaluation.clarity?.score || 0}/5
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.first_player_explanation_evaluation.clarity?.feedback || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Completeness */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Completeness</span>
+                        <span className="text-lg font-bold text-orange-600">
+                          {match.first_player_explanation_evaluation.completeness?.score || 0}/5
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.first_player_explanation_evaluation.completeness?.feedback || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Final Score Breakdown */}
+                  <div className="mt-4 p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded">
+                    <p className="font-semibold text-sm text-gray-700">
+                      Explanation Score: {match.first_player_explanation_score?.toFixed(1)}% 
+                      (worth 50% of total match score)
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Testcases Score: {match.first_player_testcases_score?.toFixed(1)}%
+                    </p>
+                    <p className="text-lg font-bold text-blue-900 mt-2">
+                      Total Match Score: {match.first_player_total_score?.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Player 2 Transcript & Evaluation */}
+            <div className="border rounded-lg p-6 bg-gray-50">
+              <h3 className="text-xl font-bold mb-3">{player2.username}'s Explanation</h3>
+              
+              {/* Transcript */}
+              {match.second_player_explanation_transcript ? (
+                <div className="bg-white p-4 rounded border mb-4">
+                  <p className="text-gray-800 whitespace-pre-wrap">
+                    {match.second_player_explanation_transcript}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-gray-500 italic mb-4">No explanation provided</p>
+              )}
+
+              {/* Evaluation Ratings */}
+              {match.second_player_explanation_evaluation && 
+              match.second_player_explanation_evaluation.total_score !== undefined && (
+                <div className="bg-blue-50 p-4 rounded border border-blue-200">
+                  <h4 className="font-bold text-lg mb-3 text-blue-900">Explanation Evaluation</h4>
+                  
+                  {/* Overall Score */}
+                  <div className="mb-4 p-3 bg-white rounded border-l-4 border-blue-500">
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-700">Total Score</span>
+                      <span className="text-2xl font-bold text-blue-600">
+                        {match.second_player_explanation_evaluation.total_score}/20
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-2">
+                      {match.second_player_explanation_evaluation.overall_feedback}
+                    </p>
+                  </div>
+
+                  {/* Detailed Scores */}
+                  <div className="space-y-3">
+                    {/* Correctness */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Correctness</span>
+                        <span className="text-lg font-bold text-green-600">
+                          {match.second_player_explanation_evaluation.correctness?.score || 0}/10
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.second_player_explanation_evaluation.correctness?.feedback || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Clarity */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Clarity</span>
+                        <span className="text-lg font-bold text-purple-600">
+                          {match.second_player_explanation_evaluation.clarity?.score || 0}/5
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.second_player_explanation_evaluation.clarity?.feedback || 'N/A'}
+                      </p>
+                    </div>
+
+                    {/* Completeness */}
+                    <div className="p-3 bg-white rounded">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="font-semibold text-gray-700">Completeness</span>
+                        <span className="text-lg font-bold text-orange-600">
+                          {match.second_player_explanation_evaluation.completeness?.score || 0}/5
+                        </span>
+                      </div>
+                      <p className="text-sm text-gray-600">
+                        {match.second_player_explanation_evaluation.completeness?.feedback || 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Final Score Breakdown */}
+                  <div className="mt-4 p-3 bg-gradient-to-r from-blue-100 to-purple-100 rounded">
+                    <p className="font-semibold text-sm text-gray-700">
+                      Explanation Score: {match.second_player_explanation_score?.toFixed(1)}% 
+                      (worth 50% of total match score)
+                    </p>
+                    <p className="text-sm text-gray-600 mt-1">
+                      Testcases Score: {match.second_player_testcases_score?.toFixed(1)}%
+                    </p>
+                    <p className="text-lg font-bold text-blue-900 mt-2">
+                      Total Match Score: {match.second_player_total_score?.toFixed(1)}%
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Code Display */}
         <div className="space-y-6">

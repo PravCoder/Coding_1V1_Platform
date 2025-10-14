@@ -31,7 +31,7 @@ const MatchProgressGraph = ({
       <VideoCamera 
         match_id={match_id} 
         socketRef={socketRef} 
-        shouldInitializeCamera={(match?.streaming || (typeof window !== 'undefined' && localStorage.getItem('streaming') === 'true'))}
+        shouldInitializeCamera={true}
       />
 
       {/* Progress Bars Section */}

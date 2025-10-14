@@ -220,6 +220,13 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
     }
   }, [shouldInitializeCamera]);
 
+  // Always initialize camera on component mount regardless of streaming status
+  useEffect(() => {
+    if (connectionStatus === 'disconnected') {
+      initializeLocalStream();
+    }
+  }, []);
+
   // Setup socket listeners
   useEffect(() => {
     if (!socketRef.current) return;

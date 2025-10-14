@@ -99,17 +99,18 @@ io.on("connection", (socket) => {
 
     // find-match-event listenings for users wanting to play, and connects 2 users wanting to player, is emitted when play button is clicked
     socket.on("find_match", async (data) => {
-        console.log("find match for: " + data.player_id);
+        console.log("find match for: " + data.player_id, " is it explanation match ", data.explanation_match);
         userID = data.player_id;
+        match_type = data.explanation_match ? "explanation" : "regular"
 
         // clean up any  old matches for this player once they press find match. 
         cleanupPlayerOldMatches(data.player_id, null);
 
         // there are not enough players to create match add cur-player to queue to wait
         if (player_queue.length == 0) {  
-            player_queue.push({ socket_id: socket.id, player_id: data.player_id });
+            player_queue.push({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
         // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player
-        } else if (player_queue.length >= 1) {
+        } else if (player_queue.length >= 1 &&  player_queue[0].match_type === match_type) {
             // organize player data
             const player1 = {socket_id: socket.id, player_id: data.player_id };  // player1 is the person that sent the emit find-match
             const player2 = player_queue.shift();                                       // player2 is the player we popped from queue, who previously psent emit find-match

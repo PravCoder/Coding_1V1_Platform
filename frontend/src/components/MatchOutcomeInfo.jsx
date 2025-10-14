@@ -56,7 +56,7 @@ const MatchOutcomeInfo = ({ match_id }) => {
       socketRef.current = io("http://localhost:3001");
     }
 
-    // make sure this socket rejoins room of this match so it receives the mits from index.js so we can listen to the below
+    // make sure this socket rejoins room of this match so it receives the emitss from index.js so we can listen to the below
     socketRef.current.emit("rejoin_match", { match_id });
 
     // just for opponent marking as done, we emit to this event in player_done-event listening

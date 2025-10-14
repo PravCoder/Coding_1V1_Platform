@@ -106,6 +106,13 @@ io.on("connection", (socket) => {
         // clean up any  old matches for this player once they press find match. 
         cleanupPlayerOldMatches(data.player_id, null);
 
+        // Remove this player from queue if they're already in it (prevents self-matching on refresh)
+        const existingPlayerIndex = player_queue.findIndex(p => p.player_id === data.player_id);
+        if (existingPlayerIndex !== -1) {
+            console.log("Removing existing player from queue:", data.player_id);
+            player_queue.splice(existingPlayerIndex, 1);
+        }
+
         // there are not enough players to create match add cur-player to queue to wait
         if (player_queue.length == 0) {  
             player_queue.push({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
@@ -114,6 +121,14 @@ io.on("connection", (socket) => {
             // organize player data
             const player1 = {socket_id: socket.id, player_id: data.player_id };  // player1 is the person that sent the emit find-match
             const player2 = player_queue.shift();                                       // player2 is the player we popped from queue, who previously psent emit find-match
+            
+            // Prevent self-matching: check if both players are the same
+            if (player1.player_id === player2.player_id) {
+                console.log("Preventing self-match for player:", player1.player_id);
+                // Put the player back in queue and continue waiting
+                player_queue.push({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
+                return;
+            }
             
             // unqiue string used to connect sockets to a room using this string, comprised of player-string
             const match_str = `match_${player1.player_id}_${player2.player_id}`;

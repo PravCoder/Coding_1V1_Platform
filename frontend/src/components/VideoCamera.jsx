@@ -342,14 +342,6 @@ const VideoCamera = ({ match_id, socketRef, shouldInitializeCamera = false }) =>
 
       {/* Controls */}
       <div className="flex justify-center gap-2 mb-3">
-        {!localStreamRef.current && (
-          <button
-            onClick={initializeLocalStream}
-            className="px-3 py-1 rounded text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700"
-          >
-            Enable Camera
-          </button>
-        )}
         <button
           onClick={toggleVideo}
           className={`px-3 py-1 rounded text-sm font-medium transition-colors ${

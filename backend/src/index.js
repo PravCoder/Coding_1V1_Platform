@@ -312,6 +312,25 @@ io.on("connection", (socket) => {
         console.log("updated queue: " , player_queue.length);
     });
 
+    // in homepage when user pressed find match, its loading, they pressed cancel then we should cancel that match making gracefully
+    socket.on("cancel_matchmaking", (data) => {
+        const { player_id } = data;
+        console.log("Player cancelling matchmaking:", player_id);
+        
+        // find and remove player from player-queue so they cannot be matched
+        const player_indx = player_queue.findIndex(p => p.player_id === player_id);
+        
+        if (player_indx !== -1) {
+            player_queue.splice(player_indx, 1);
+            console.log(`✅ Removed ${player_id} from queue. Queue size: ${player_queue.length}, cancel match making`);
+            
+            // confirm cancellation to client by emitting, so it stops the loading
+            socket.emit("matchmaking_cancelled");
+        } else {
+            console.log(`⚠️ Player ${player_id} not found in queue`);
+        }
+    });
+
     // On server: listening for opponent-update-event from client
     socket.on("get_opponent_update", async (data) => {
         console.log("get_opponent_update_server id: " + data.match_id);

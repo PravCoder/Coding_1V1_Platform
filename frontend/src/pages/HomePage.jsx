@@ -28,6 +28,13 @@ const HomePage = () => {
     socket.emit("find_match", { player_id: userID, explanation_match:isSpeechToText, streaming:isStreaming });
   };
 
+  // called when user presses cancel button after pressing find match, emits to event that gracefully cancels match making for this player
+  const handleCancelMatchmaking = () => {
+    console.log("Cancelling matchmaking...");
+    socket.emit("cancel_matchmaking", { player_id: userID });
+    setIsSearching(false);
+  };
+
   // Request camera access
   const requestCameraAccess = async () => {
     try {
@@ -94,6 +101,7 @@ const HomePage = () => {
   };
 
   useEffect(() => {
+
     // From client: listen to match-found-event & receive the broadcasted data sent with emit from server
     socket.on("match_found", (data) => {
       try {
@@ -115,10 +123,22 @@ const HomePage = () => {
       }
     }); // ← ADDED: Close the socket.on
 
+
+    // listen for match making cancellation confirmation from index.js
+    socket.on("matchmaking_cancelled", () => {
+      console.log("Matchmaking cancelled successfully");
+      setIsSearching(false);
+    });
+
+    // cancel matchmaking if component unmounts while searching
     return () => {
+      if (isSearching) {
+        socket.emit("cancel_matchmaking", { player_id: userID });
+      }
       socket.off("match_found");
+      socket.off("matchmaking_cancelled");
     };
-  }, [navigate]); // ← ADDED: Close the useEffect
+  }, [navigate, isSearching, userID]); // ← ADDED: Close the useEffect
 
 
 
@@ -201,23 +221,31 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Play Button with Loading State */}
-          <button 
-            onClick={handleFindMatch}
-            disabled={isSearching}
-            className={`bg-red-700 text-white font-bold py-2 px-4 rounded-md transition flex items-center justify-center space-x-2 ${
-              isSearching ? 'opacity-75 cursor-not-allowed' : 'hover:bg-red-600'
-            }`}
-          >
-            {isSearching ? (
-              <>
-                <FaSpinner className="animate-spin" />
-                <span>Searching for match...</span>
-              </>
-            ) : (
-              'Play! (find match)'
-            )}
-          </button>
+          {/* ✅ UPDATED: Play/Cancel Button with conditional rendering */}
+          {!isSearching ? (
+            <button 
+              onClick={handleFindMatch}
+              className="bg-red-700 text-white font-bold py-2 px-4 rounded-md transition flex items-center justify-center space-x-2 hover:bg-red-600"
+            >
+              Play! (find match)
+            </button>
+          ) : (
+            <div className="flex flex-col space-y-3">
+              {/* Loading indicator */}
+              <div className="flex items-center justify-center space-x-2 text-white">
+                <FaSpinner className="animate-spin text-red-500" />
+                <span>Finding opponent...</span>
+              </div>
+              
+              {/* Cancel button */}
+              <button 
+                onClick={handleCancelMatchmaking}
+                className="bg-gray-700 text-white font-semibold py-2 px-4 rounded-md transition hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

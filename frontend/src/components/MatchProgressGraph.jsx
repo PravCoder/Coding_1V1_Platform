@@ -1,5 +1,7 @@
 import React from 'react';
-import VideoCamera from './VideoCamera';
+// deprecated: import VideoCamera from './VideoCamera'; 
+import VideoChat from './VideoChat';
+
 
 const MatchProgressGraph = ({
   opponentSubmissions,
@@ -28,10 +30,11 @@ const MatchProgressGraph = ({
       </div>
 
       {/* Video Camera Component */}
-      <VideoCamera 
-        match_id={match_id} 
-        socketRef={socketRef} 
-        shouldInitializeCamera={true}
+      {/* Video Chat Component */}
+      <VideoChat 
+        match_id={match_id}
+        match={match}
+        socketRef={socketRef}
       />
 
       {/* Progress Bars Section */}

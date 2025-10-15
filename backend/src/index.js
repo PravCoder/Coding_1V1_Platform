@@ -61,7 +61,7 @@ const matches_timer_data  = {};
 // track which playesr are in which matches, player_id -> match_id
 const player_match_tracking = new Map();
 
-let TIME_PER_MATCH = 10 * 60;  // minutes * 60 seconds, just change the number of minutes.
+let TIME_PER_MATCH = 40 * 60;  // X minutes * 60 seconds, just change the number of minutes.
 
 // helper function to clear match timer and prevent flickers
 const clearMatchTimer = (match_id) => {
@@ -147,13 +147,13 @@ io.on("connection", (socket) => {
             console.log("player2: " + player2.player_id + "\n");
 
             // OPTION 1: select random problem
-            // const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
-            // const random_problem = problem_docs[0];
+            const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
+            const random_problem = problem_docs[0];
 
             // OPTION 2: for testing hardcode problem object you want to test
             // matrix diagonal: 68e9b0a3b6eb8cb274f7b548
             // lucky number: 68e9b5f8b6eb8cb274f7b54a
-            const random_problem = await ProblemModel.findById("68e9b5f8b6eb8cb274f7b54a");
+            // const random_problem = await ProblemModel.findById("68e9b5f8b6eb8cb274f7b54a");
 
             console.log("random_problem: " + random_problem._id);
 
@@ -458,17 +458,14 @@ io.on("connection", (socket) => {
 
 
 
-    // Video streaming handlers
+    // IMPORTANT: video streaming socket handlesr
     socket.on("video_stream_ready", async (data) => {
-        console.log(`Video stream ready for match: ${data.match_id}`);
+        console.log(`📹 Video stream ready for match: ${data.match_id}, from user: ${data.user_id}`);
         try {
             const match = await MatchModel.findById(data.match_id);
             if (match && match.match_str) {
-                console.log(`Notifying other players in room: ${match.match_str}`);
-                // Notify other players in the same match that video is available
-                socket.to(match.match_str).emit("video_stream_ready");
-            } else {
-                console.log(`Match not found or no match_str for: ${data.match_id}`);
+                // notify the OTHER player that this users stream is ready
+                socket.to(match.match_str).emit("peer_stream_ready", { user_id: data.user_id });
             }
         } catch (error) {
             console.error("Error in video_stream_ready:", error);
@@ -476,15 +473,15 @@ io.on("connection", (socket) => {
     });
 
     socket.on("video_offer", async (data) => {
-        console.log(`Video offer received for match: ${data.match_id}`);
+        console.log(`📹 Video offer received for match: ${data.match_id}`);
         try {
             const match = await MatchModel.findById(data.match_id);
             if (match && match.match_str) {
-                console.log(`Forwarding offer to room: ${match.match_str}`);
-                // Forward the offer to the other player in the match
-                socket.to(match.match_str).emit("video_offer", data.offer);
-            } else {
-                console.log(`Match not found or no match_str for: ${data.match_id}`);
+                // Forward the offer to the other player
+                socket.to(match.match_str).emit("video_offer", { 
+                    offer: data.offer,
+                    from_user_id: data.from_user_id 
+                });
             }
         } catch (error) {
             console.error("Error in video_offer:", error);
@@ -492,15 +489,15 @@ io.on("connection", (socket) => {
     });
 
     socket.on("video_answer", async (data) => {
-        console.log(`Video answer received for match: ${data.match_id}`);
+        console.log(`📹 Video answer received for match: ${data.match_id}`);
         try {
             const match = await MatchModel.findById(data.match_id);
             if (match && match.match_str) {
-                console.log(`Forwarding answer to room: ${match.match_str}`);
-                // Forward the answer to the other player in the match
-                socket.to(match.match_str).emit("video_answer", data.answer);
-            } else {
-                console.log(`Match not found or no match_str for: ${data.match_id}`);
+                // Forward the answer to the other player
+                socket.to(match.match_str).emit("video_answer", { 
+                    answer: data.answer,
+                    from_user_id: data.from_user_id 
+                });
             }
         } catch (error) {
             console.error("Error in video_answer:", error);
@@ -508,15 +505,15 @@ io.on("connection", (socket) => {
     });
 
     socket.on("ice_candidate", async (data) => {
-        console.log(`ICE candidate received for match: ${data.match_id}`);
+        console.log(`📹 ICE candidate received for match: ${data.match_id}`);
         try {
             const match = await MatchModel.findById(data.match_id);
             if (match && match.match_str) {
-                console.log(`Forwarding ICE candidate to room: ${match.match_str}`);
-                // Forward the ICE candidate to the other player in the match
-                socket.to(match.match_str).emit("ice_candidate", data.candidate);
-            } else {
-                console.log(`Match not found or no match_str for: ${data.match_id}`);
+                // Forward the ICE candidate to the other player
+                socket.to(match.match_str).emit("ice_candidate", { 
+                    candidate: data.candidate,
+                    from_user_id: data.from_user_id 
+                });
             }
         } catch (error) {
             console.error("Error in ice_candidate:", error);

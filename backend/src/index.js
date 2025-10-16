@@ -705,6 +705,9 @@ const determineMatchWinner = async (match_id) => {
 // frontend runs on: 3000
 // backend runs on: 3001
 // confirm server is running, this is the port where all requests are sent
-server.listen(3001, () => {
+
+// Render automatically does a PORT environment variable, when running locally use 3001
+const PORT = process.env.PORT || 3001;
+server.listen(PORT, () => {
     console.log("server is running")
 })

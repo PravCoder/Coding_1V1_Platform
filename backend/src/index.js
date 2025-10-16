@@ -25,7 +25,7 @@ app.use("/problem", problemRouter);
 app.use("/match", matchRouter);
 
 // connection string with db-password db-name db-password
-mongoose.connect("mongodb+srv://pravachanpatra:5ct6fwHnaGaUJsDA@coding1v1platformcluste.kvwqv.mongodb.net/coding1v1platform?retryWrites=true&w=majority&appName=coding1V1platformcluster0")
+mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log("Connected to MongoDB"))
 .catch(err => console.log("Error connecting to MongoDB:", err));
 

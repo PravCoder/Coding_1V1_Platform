@@ -7,6 +7,7 @@ import { Editor } from "@monaco-editor/react";
 import { CODE_SNIPPETS, theme } from "../constants/api";
 import  getCurrentUser  from "../hooks/getCurrentUser";
 import axios from "axios";
+import api from "../api/axios";
 import io from "socket.io-client";
 import MatchTimer from "./MatchTimer";
 import MatchProgressGraph from "./MatchProgressGraph";
@@ -153,7 +154,7 @@ const CodeEditor = ({ match_id }) => {
     try {
       // this is slowing down application have to fetch problem, every time so store match in cache. 
       console.log("fetch problem language: ", language);
-      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:language});  // string version language. send some payload language with it
+      const response = await api.post(`/match/get-match-problem/${match_id}`, {language:language});  // string version language. send some payload language with it
       console.log("get-match-problem response data: ", response);
       setProblem(response.data.problem);
       setMatch(response.data.match)
@@ -263,7 +264,7 @@ const CodeEditor = ({ match_id }) => {
     //   }
     // }
     console.log("language change new language: ", newLanguage);
-    const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {language:newLanguage});  // send some payload language with it
+    const response = await api.post(`/match/get-match-problem/${match_id}`, {language:newLanguage});  // send some payload language with it
     console.log("handleLanguageChange get-match-problem response data: ", response);
     setProblem(response.data.problem);
     setMatch(response.data.match);
@@ -296,7 +297,7 @@ const CodeEditor = ({ match_id }) => {
   const runCode = async () => {
     setIsLoading(true);
     try{
-      const response = await axios.post(`http://localhost:3001/match/run-code`, {sourceCode:sourceCode, customInput:customInput, languageId:languageOptions[language]});
+      const response = await api.post(`/match/run-code`, {sourceCode:sourceCode, customInput:customInput, languageId:languageOptions[language]});
       console.log("Output running code with custom input: " + response.data);
       setOutput(response.data.stdout || response.data.stderr || "Your code produced no output");
       setTime(response.data.time);
@@ -321,7 +322,7 @@ const CodeEditor = ({ match_id }) => {
     setIsSubmitting(true); // set loading fro submission
     try {
       console.log("transcript before sending: ", explanationTranscript);
-      const result = await axios.post("http://localhost:3001/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
+      const result = await api.post("/match/submission", {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
                 userID:getCurrentUser(), explanation_transcript:explanationTranscript}); // pass in explanation transcript after submission to route
 
       console.log("match-id: " + match_id);
@@ -391,7 +392,7 @@ const CodeEditor = ({ match_id }) => {
   // for explanation match
   const handlePlayerDone = async () => {
     try {
-        const response = await axios.post(`http://localhost:3001/match/mark-player-done-explanation-match/${match_id}`, {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
+        const response = await api.post(`/match/mark-player-done-explanation-match/${match_id}`, {sourceCode:sourceCode, match_id:match_id, languageId:languageOptions[language], 
                 userID:getCurrentUser(), explanation_transcript:explanationTranscript});
 
         // emit to player-done event which just notifies other player that they are done through opponent_done

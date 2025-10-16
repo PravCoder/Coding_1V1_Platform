@@ -1,6 +1,8 @@
 import { useCookies } from "react-cookie";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
+import api from "../api/axios";
+
 import React, { useState } from "react";
 import { FcGoogle } from "react-icons/fc"; // Google icon
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"; // Eye icons
@@ -16,7 +18,7 @@ const RegisterForm = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    await axios.post("http://localhost:3001/register", { username, email, password })
+    await api.post("/register", { username, email, password })
       .then(result => {
         console.log("register-form-result: " + result);
         console.log("register-response-status: " + result.status);

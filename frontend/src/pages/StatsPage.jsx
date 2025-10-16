@@ -2,6 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import api from "../api/axios";
+
 import getCurrentUser from "../hooks/getCurrentUser";
 
 import Navbar from '../components/Navbar';
@@ -22,7 +24,7 @@ const StatsPage = () => {
 
   const fetchPlayerMatches = async () => {
     try {
-      const response = await axios.get(`http://localhost:3001/get-matches/${userID}`);
+      const response = await api.get(`/get-matches/${userID}`);
       
       const matchesData = response.data.matches;
       const stats = response.data.stats;

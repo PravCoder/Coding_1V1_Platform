@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from "axios";
+import api from "../api/axios";
+
 import { useCookies } from "react-cookie";
 import { FcGoogle } from "react-icons/fc"; // Google icon
 import { AiOutlineEye, AiOutlineEyeInvisible } from "react-icons/ai"; // Eye icons
@@ -12,10 +14,11 @@ const LoginForm = () => {
   const [_, setCookies] = useCookies(["access_token"]);
   const navigate = useNavigate();
 
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     try {
-      const result = await axios.post("http://localhost:3001/login", { email, password });
+      const result = await api.post("/login", { email, password });
       console.log("login-form result data: " + result.data.message);
       setCookies("access_token", result.data.token);
       window.localStorage.setItem("userID", result.data.userID);

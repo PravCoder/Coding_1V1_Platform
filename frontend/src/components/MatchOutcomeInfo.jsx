@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
+import api from "../api/axios";
+
+
 import io from 'socket.io-client';
 import getCurrentUser from "../hooks/getCurrentUser";
 
@@ -13,7 +16,7 @@ const MatchOutcomeInfo = ({ match_id }) => {
 
   const fetchMatch = async () => {
     try {
-      const response = await axios.post(`http://localhost:3001/match/get-match-problem/${match_id}`, {});
+      const response = await api.post(`/match/get-match-problem/${match_id}`, {});
       const matchData = response.data.match;
       setMatch(matchData);
       setPlayer1(matchData.first_player);

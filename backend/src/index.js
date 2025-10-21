@@ -2,6 +2,7 @@ const express = require("express")
 const mongoose = require("mongoose")
 const cors = require("cors")
 const axios = require("axios");
+const Redis = require("ioredis");
 // socket.io stuff
 const http = require("http");
 const { Server } = require("socket.io");  // getting class-server from socket.io
@@ -47,7 +48,54 @@ const io = new Server(server, {
 // when user refreshes page socket.id is renewed
 // when server is restarted player-queue is renewed, to prevent this store it in localstorage like userId.
 // FIFO: pops first element in array the first person who clicked play, adds a player to end of queue
-const player_queue = []
+// const player_queue = []
+
+// connect to redis using redi-url from upstash
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:3000");
+
+// define redis keys which unique identifies to store data
+const PLAYER_QUEUE_KEY = "player_queue";
+const ACTIVE_MATCHES_KEY = "active_matches";  // note: not used currently
+
+// helper for add to redis-queue operation
+async function add_to_queue(playerData) {
+    await redis.rpush(PLAYER_QUEUE_KEY, JSON.stringify(playerData));  // pushes the given player-data
+    console.log('Added player to queue:', playerData.player_id);
+}
+
+// helper for redis-queue operation remove player from queue
+async function remove_from_queue(player_id) {
+  const queueLength = await redis.llen(PLAYER_QUEUE_KEY);
+  // iterate entire redos-queue if an item id equal to given player id then remove that item-player from queue
+  for (let i = 0; i < queueLength; i++) {
+      const item = await redis.lindex(PLAYER_QUEUE_KEY, i);
+      const playerData = JSON.parse(item);
+      
+      if (playerData.player_id === player_id) {
+          await redis.lrem(PLAYER_QUEUE_KEY, 1, item);
+          console.log("Removed player from queue:", player_id);
+          return true;
+      }
+  }
+  return false;
+}
+
+// helper for redis-queue operation pop player from queue
+async function pop_from_queue() {
+    const item = await redis.lpop(PLAYER_QUEUE_KEY);
+    return item ? JSON.parse(item) : null;
+}
+// get redis-queue-length
+async function getQueueLength() {
+    return await redis.llen(PLAYER_QUEUE_KEY);
+}
+// retrieve all the items from the redis-queue
+async function getQueueItems() {
+    const items = await redis.lrange(PLAYER_QUEUE_KEY, 0, -1);
+    return items.map(item => JSON.parse(item));
+}
+
+
 
 // each match_id -> set of socket.ids, purpose of this? to keep track of sockets
 const active_matches = new Map();
@@ -101,243 +149,269 @@ io.on("connection", (socket) => {
     socket.on("find_match", async (data) => {
         console.log("find match for: " + data.player_id, " is it explanation match ", data.explanation_match);
         userID = data.player_id;
-        match_type = data.explanation_match ? "explanation" : "regular"
+        match_type = data.explanation_match ? "explanation" : "regular";
+
+
+        // get all items from redis queue
+        let queue_items = await getQueueItems();
 
         // clean up any  old matches for this player once they press find match. 
         cleanupPlayerOldMatches(data.player_id, null);
 
-        // Remove this player from queue if they're already in it (prevents self-matching on refresh)
-        const existingPlayerIndex = player_queue.findIndex(p => p.player_id === data.player_id);
-        if (existingPlayerIndex !== -1) {
-            console.log("Removing existing player from queue:", data.player_id);
-            player_queue.splice(existingPlayerIndex, 1);
-        }
+        const queue_length = await getQueueLength();
+        console.log("Queue length:", queue_length);
+
+        // remove this player from queue if they're already in it (prevents self-matching on refresh)
+        await remove_from_queue(data.player_id);
 
         // there are not enough players to create match add cur-player to queue to wait
-        if (player_queue.length == 0) {  
-            player_queue.push({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
-        // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player
-        } else if (player_queue.length >= 1 &&  player_queue[0].match_type === match_type) {
-            // organize player data
-            const player1 = {socket_id: socket.id, player_id: data.player_id };  // player1 is the person that sent the emit find-match
-            const player2 = player_queue.shift();                                       // player2 is the player we popped from queue, who previously psent emit find-match
+        if (queue_length == 0) {  
+          await add_to_queue({ socket_id: socket.id,  player_id: data.player_id, match_type: match_type });
+          console.log("Added player to empty queue.");
             
-            // Prevent self-matching: check if both players are the same
-            if (player1.player_id === player2.player_id) {
-                console.log("Preventing self-match for player:", player1.player_id);
-                // Put the player back in queue and continue waiting
-                player_queue.push({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
-                return;
+        // if there are enough players to create match with cur-player pop a player from queue and create match with cur-player
+        } else if (queue_length >= 1) {
+
+            // find a matching player with same match_type
+            let matched_player = null;
+            for (const item of queue_items) {
+                if (item.match_type === match_type && item.player_id !== data.player_id) {
+                    matched_player = item;
+                    break;
+                }
             }
             
-            // unqiue string used to connect sockets to a room using this string, comprised of player-string
-            const match_str = `match_${player1.player_id}_${player2.player_id}`;
-            // adds current socket of cur-player to a room of match-str, a room is a grouping of sockets
-            socket.join(match_str);
+            // if we found a matched player
+            if (matched_player) {
+
             
-            // to() gets a socket given its id, use socket-id of player2 to get that player2-socket and add player2-socket to the room of match-str
-            io.to(player2.socket_id).socketsJoin(match_str);
+              // organize player data
+              const player1 = {socket_id: socket.id, player_id: data.player_id };  // player1 is the person that sent the emit find-match
+              const player2 = matched_player;                              // player2 is the player we popped from queue, who previously psent emit find-match
+              
+              // remove player2 from queue
+              await remove_from_queue(player2.player_id);
+              // Prevent self-matching: check if both players are the same
+              if (player1.player_id === player2.player_id) {
+                  console.log("Preventing self-match for player:", player1.player_id);
+                  // Put the player back in queue and continue waiting
+                  add_to_queue({ socket_id: socket.id, player_id: data.player_id, match_type: match_type });
+                  return;
+              }
+              
+              // unqiue string used to connect sockets to a room using this string, comprised of player-string
+              const match_str = `match_${player1.player_id}_${player2.player_id}`;
+              // adds current socket of cur-player to a room of match-str, a room is a grouping of sockets
+              socket.join(match_str);
+              
+              // to() gets a socket given its id, use socket-id of player2 to get that player2-socket and add player2-socket to the room of match-str
+              io.to(player2.socket_id).socketsJoin(match_str);
 
-            // show which sockets are in match-str-room
-            io.in(match_str).fetchSockets().then((sockets) => {
-                console.log(`Sockets in room 4 ${match_str}:`, sockets.map(s => s.id));
-            });
+              // show which sockets are in match-str-room
+              io.in(match_str).fetchSockets().then((sockets) => {
+                  console.log(`Sockets in room 4 ${match_str}:`, sockets.map(s => s.id));
+              });
 
-            console.log("player1: " + player1.player_id );
-            console.log("player2: " + player2.player_id + "\n");
+              console.log("player1: " + player1.player_id );
+              console.log("player2: " + player2.player_id + "\n");
 
-            // OPTION 1: select random problem
-            const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
-            const random_problem = problem_docs[0];
+              // OPTION 1: select random problem
+              const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
+              const random_problem = problem_docs[0];
 
-            // OPTION 2: for testing hardcode problem object you want to test
-            // matrix diagonal: 68e9b0a3b6eb8cb274f7b548
-            // lucky number: 68e9b5f8b6eb8cb274f7b54a
-            // const random_problem = await ProblemModel.findById("68e9b5f8b6eb8cb274f7b54a");
+              // OPTION 2: for testing hardcode problem object you want to test
+              // matrix diagonal: 68e9b0a3b6eb8cb274f7b548
+              // lucky number: 68e9b5f8b6eb8cb274f7b54a
+              // const random_problem = await ProblemModel.findById("68e9b5f8b6eb8cb274f7b54a");
 
-            console.log("random_problem: " + random_problem._id);
+              console.log("random_problem: " + random_problem._id);
 
-            // send post-request to create match once we have selected/connected 2 players & problem
-            // pass match-str with it
-            await axios.post("http://localhost:3001/match/create-match", {
-                first_player_id: player1.player_id,
-                second_player_id: player2.player_id,
-                problem_id:random_problem,
-                match_str:match_str,
-                userID: userID,  // send userID with it which we got from client the first time above and to add it to user.matches
-                match_type: data.explanation_match ? "explanation" : "regular"  // when creating match send in the type of match it is from the toggle
-            })
-                .then(async response => {
-                    console.log("match created successfuly:", response.data);
-                    
-                    // get all sockets in match-str room and emit match-found event along with some informational data. 
-                    console.log("THE NEW MATCH ID: ", response.data.match._id);
-                    // emit match-found event to all sockets in match-str room
-                    io.to(match_str).emit("match_found", { 
-                        opponent1: player1.player_id, 
-                        opponent2: player2.player_id, 
-                        match_str: match_str,
-                        new_match_id: response.data.match._id  // for url redirect to match play page
-                    });
-                    
-                    // TIMER SYNC STUFF BELOW
-                    const new_match_id = response.data.match._id; // ✅ Define the variable properly
-                    
-                    // track both players in this new match we created
-                    player_match_tracking.set(player1.player_id, new_match_id);
-                    player_match_tracking.set(player2.player_id, new_match_id);
-                    // clear any existing timer data for this match id to prevent flickering
-                    clearMatchTimer(new_match_id);
+              // send post-request to create match once we have selected/connected 2 players & problem
+              // pass match-str with it
+              await axios.post("http://localhost:3001/match/create-match", {
+                  first_player_id: player1.player_id,
+                  second_player_id: player2.player_id,
+                  problem_id:random_problem,
+                  match_str:match_str,
+                  userID: userID,  // send userID with it which we got from client the first time above and to add it to user.matches
+                  match_type: data.explanation_match ? "explanation" : "regular"  // when creating match send in the type of match it is from the toggle
+              })
+                  .then(async response => {
+                      console.log("match created successfuly:", response.data);
+                      
+                      // get all sockets in match-str room and emit match-found event along with some informational data. 
+                      console.log("THE NEW MATCH ID: ", response.data.match._id);
+                      // emit match-found event to all sockets in match-str room
+                      io.to(match_str).emit("match_found", { 
+                          opponent1: player1.player_id, 
+                          opponent2: player2.player_id, 
+                          match_str: match_str,
+                          new_match_id: response.data.match._id  // for url redirect to match play page
+                      });
+                      
+                      // TIMER SYNC STUFF BELOW
+                      const new_match_id = response.data.match._id; // ✅ Define the variable properly
+                      
+                      // track both players in this new match we created
+                      player_match_tracking.set(player1.player_id, new_match_id);
+                      player_match_tracking.set(player2.player_id, new_match_id);
+                      // clear any existing timer data for this match id to prevent flickering
+                      clearMatchTimer(new_match_id);
 
-                    // if we dont have this match-timer in our in-memory store yet, init it
-                    if (!matches_timer_data[new_match_id]) {
-                      matches_timer_data[new_match_id] = {
-                        state: 'waiting',
-                        timerInterval: null,
-                        startTime: null,
-                        duration: TIME_PER_MATCH // 30 minutes in seconds (30 * 60)
-                    };
-                    
-                    // check if we correctly added the sockets-players into match-str-room
-                    const num_player_in_room = await io.in(match_str).fetchSockets().then(sockets => sockets.length); // ✅ Use match_str
+                      // if we dont have this match-timer in our in-memory store yet, init it
+                      if (!matches_timer_data[new_match_id]) {
+                        matches_timer_data[new_match_id] = {
+                          state: 'waiting',
+                          timerInterval: null,
+                          startTime: null,
+                          duration: TIME_PER_MATCH // 30 minutes in seconds (30 * 60)
+                      };
+                      
+                      // check if we correctly added the sockets-players into match-str-room
+                      const num_player_in_room = await io.in(match_str).fetchSockets().then(sockets => sockets.length); // ✅ Use match_str
 
-                    // if there are 2 players in the room and the match-timer-obj state is waiting, start the match
-                    if (num_player_in_room === 2 && matches_timer_data[new_match_id].state === "waiting") { // ✅ Use new_match_id
-                      // start countdown to match
-                      matches_timer_data[new_match_id].state = "countdown"; // ✅ Use new_match_id
-                      // emit to all sockets in match-str room to start the countdown
-                      io.to(match_str).emit('start_countdown'); // ✅ Use match_str
+                      // if there are 2 players in the room and the match-timer-obj state is waiting, start the match
+                      if (num_player_in_room === 2 && matches_timer_data[new_match_id].state === "waiting") { // ✅ Use new_match_id
+                        // start countdown to match
+                        matches_timer_data[new_match_id].state = "countdown"; // ✅ Use new_match_id
+                        // emit to all sockets in match-str room to start the countdown
+                        io.to(match_str).emit('start_countdown'); // ✅ Use match_str
 
-                      // START THE COUNTDOWN
-                      let count = 3;
-                      // set-interval-function that is called every 1000 msc, countdownInterval()
-                      const countdownInterval = setInterval(async () => {
-                        io.to(match_str).emit('countdown_tick', { count }); // ✅ Use match_str
-                        count--;
-                        
-                        if (count < 0) {
-                          clearInterval(countdownInterval);
-                          // start the match timer fresh
-                          const startTime = Date.now();
-                          matches_timer_data[new_match_id].state = 'running'; // ✅ Use new_match_id
-                          matches_timer_data[new_match_id].startTime = startTime; // ✅ Use new_match_id
+                        // START THE COUNTDOWN
+                        let count = 3;
+                        // set-interval-function that is called every 1000 msc, countdownInterval()
+                        const countdownInterval = setInterval(async () => {
+                          io.to(match_str).emit('countdown_tick', { count }); // ✅ Use match_str
+                          count--;
                           
-                          // Update the match in the database
-                          await MatchModel.findByIdAndUpdate(new_match_id, { // ✅ Use new_match_id
-                            started: true,
-                            time_stop_watch: "00:00:00" 
-                          });
-                          
-                          io.to(match_str).emit('match_started', { startTime }); // ✅ Use match_str
-                          
-                          // clear and existing timer before starting new one
-                          if (matches_timer_data[new_match_id].timerInterval) {
-                            clearInterval(matches_timer_data[new_match_id].timerInterval);
-                          }
-                          
-                          // Start a timer interval to update all clients
-                          const timerInterval = setInterval(async () => {
-                            if (!matches_timer_data[new_match_id] || matches_timer_data[new_match_id].state !== 'running') {
-                              clearInterval(timerInterval);
-                              return;
-                            }
-                            const now = Date.now();
-                            const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000);
-                            const remainingSeconds = Math.max(0, matches_timer_data[new_match_id].duration - elapsedSeconds);
-
-                            // TIME EXPIRED CHECK
-                            if (remainingSeconds <= 0) {
-                              clearInterval(timerInterval);
-                              console.log(`⏰ Timer expired for match: ${new_match_id}`);
-                              const winnerResult = await determineMatchWinner(new_match_id);   // determine who won on testcases
-                              if (winnerResult) {
-                                const { winner, win_condition } = winnerResult;
-                                // update final time for consistancy
-                                await MatchModel.findByIdAndUpdate(new_match_id, { 
-                                  time_stop_watch: "00:00:00"
-                                });
-                                
-                                // emit that the match time has expired client
-                                if (winner) {
-                                  io.to(match_str).emit("match_completed_timeout", {
-                                    winner: winner,
-                                    win_condition: win_condition,
-                                  });
-                                } 
-                                
-                                console.log(`🏆 Match ${new_match_id} completed. Winner: ${winner}, Condition: ${win_condition}`);
-                              }
-                              
-                              clearMatchTimer(new_match_id);
-                              return;
-                            }
-
-                            // Update formatting to show remaining time:
-                            const hours = Math.floor(remainingSeconds / 3600);
-                            const minutes = Math.floor((remainingSeconds % 3600) / 60);
-                            const seconds = remainingSeconds % 60;
-                            const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                          if (count < 0) {
+                            clearInterval(countdownInterval);
+                            // start the match timer fresh
+                            const startTime = Date.now();
+                            matches_timer_data[new_match_id].state = 'running'; // ✅ Use new_match_id
+                            matches_timer_data[new_match_id].startTime = startTime; // ✅ Use new_match_id
                             
-                            // Update in-memory and database every 5 seconds (to reduce DB writes)
-                            if (elapsedSeconds % 5 === 0) {
-                              try {
-                                await MatchModel.findByIdAndUpdate(new_match_id, { time_stop_watch: formattedTime });
-                              } catch (err) {
-                                console.error("Error updating match time in database:", err);
-                              }
-                            }
-                            
-                            // Broadcast to all clients every second
-                            io.to(match_str).emit('timer_update', {
-                              remainingSeconds, 
-                              formattedTime 
+                            // Update the match in the database
+                            await MatchModel.findByIdAndUpdate(new_match_id, { // ✅ Use new_match_id
+                              started: true,
+                              time_stop_watch: "00:00:00" 
                             });
                             
-                          }, 1000);
-                          
-                          matches_timer_data[new_match_id].timerInterval = timerInterval; // ✅ Use new_match_id
-                        }
-                      }, 1000);
-                      
-                    // if match is already running
-                    } else if (matches_timer_data[new_match_id].state === 'running') {
-                        const now = Date.now();
-                        const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000);
-                        const remainingSeconds = Math.max(0, matches_timer_data[new_match_id].duration - elapsedSeconds);
+                            io.to(match_str).emit('match_started', { startTime }); // ✅ Use match_str
+                            
+                            // clear and existing timer before starting new one
+                            if (matches_timer_data[new_match_id].timerInterval) {
+                              clearInterval(matches_timer_data[new_match_id].timerInterval);
+                            }
+                            
+                            // Start a timer interval to update all clients
+                            const timerInterval = setInterval(async () => {
+                              if (!matches_timer_data[new_match_id] || matches_timer_data[new_match_id].state !== 'running') {
+                                clearInterval(timerInterval);
+                                return;
+                              }
+                              const now = Date.now();
+                              const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000);
+                              const remainingSeconds = Math.max(0, matches_timer_data[new_match_id].duration - elapsedSeconds);
 
-                        // Update formatting to show remaining time:
-                        const hours = Math.floor(remainingSeconds / 3600);
-                        const minutes = Math.floor((remainingSeconds % 3600) / 60);
-                        const seconds = remainingSeconds % 60;
-                        const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                              // TIME EXPIRED CHECK
+                              if (remainingSeconds <= 0) {
+                                clearInterval(timerInterval);
+                                console.log(`⏰ Timer expired for match: ${new_match_id}`);
+                                const winnerResult = await determineMatchWinner(new_match_id);   // determine who won on testcases
+                                if (winnerResult) {
+                                  const { winner, win_condition } = winnerResult;
+                                  // update final time for consistancy
+                                  await MatchModel.findByIdAndUpdate(new_match_id, { 
+                                    time_stop_watch: "00:00:00"
+                                  });
+                                  
+                                  // emit that the match time has expired client
+                                  if (winner) {
+                                    io.to(match_str).emit("match_completed_timeout", {
+                                      winner: winner,
+                                      win_condition: win_condition,
+                                    });
+                                  } 
+                                  
+                                  console.log(`🏆 Match ${new_match_id} completed. Winner: ${winner}, Condition: ${win_condition}`);
+                                }
+                                
+                                clearMatchTimer(new_match_id);
+                                return;
+                              }
+
+                              // Update formatting to show remaining time:
+                              const hours = Math.floor(remainingSeconds / 3600);
+                              const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                              const seconds = remainingSeconds % 60;
+                              const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                              
+                              // Update in-memory and database every 5 seconds (to reduce DB writes)
+                              if (elapsedSeconds % 5 === 0) {
+                                try {
+                                  await MatchModel.findByIdAndUpdate(new_match_id, { time_stop_watch: formattedTime });
+                                } catch (err) {
+                                  console.error("Error updating match time in database:", err);
+                                }
+                              }
+                              
+                              // Broadcast to all clients every second
+                              io.to(match_str).emit('timer_update', {
+                                remainingSeconds, 
+                                formattedTime 
+                              });
+                              
+                            }, 1000);
+                            
+                            matches_timer_data[new_match_id].timerInterval = timerInterval; // ✅ Use new_match_id
+                          }
+                        }, 1000);
                         
-                        // send just to this socket
-                        socket.emit('timer_sync', { 
-                          state: 'running',
-                          remainingSeconds, 
-                          formattedTime 
-                        });
-                      };
-                    }
-                })
-                .catch(error => {
-                    console.error("unable to create match in index.js:", error.message);
-                });
+                      // if match is already running
+                      } else if (matches_timer_data[new_match_id].state === 'running') {
+                          const now = Date.now();
+                          const elapsedSeconds = Math.floor((now - matches_timer_data[new_match_id].startTime) / 1000);
+                          const remainingSeconds = Math.max(0, matches_timer_data[new_match_id].duration - elapsedSeconds);
+
+                          // Update formatting to show remaining time:
+                          const hours = Math.floor(remainingSeconds / 3600);
+                          const minutes = Math.floor((remainingSeconds % 3600) / 60);
+                          const seconds = remainingSeconds % 60;
+                          const formattedTime = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                          
+                          // send just to this socket
+                          socket.emit('timer_sync', { 
+                            state: 'running',
+                            remainingSeconds, 
+                            formattedTime 
+                          });
+                        };
+                      }
+                  })
+                  .catch(error => {
+                      console.error("unable to create match in index.js:", error.message);
+                  });
+            } else {
+              // no matching player found, add current player to queue
+              console.log("No matching player with same match_type found, adding to queue");
+              await add_to_queue({ socket_id: socket.id, player_id: data.player_id,  match_type: match_type });
+            }
         }
-        console.log("updated queue: " , player_queue.length);
+        console.log("updated queue: " , getQueueLength());
     });
 
     // in homepage when user pressed find match, its loading, they pressed cancel then we should cancel that match making gracefully
-    socket.on("cancel_matchmaking", (data) => {
+    socket.on("cancel_matchmaking", async (data) => {
         const { player_id } = data;
         console.log("Player cancelling matchmaking:", player_id);
         
         // find and remove player from player-queue so they cannot be matched
-        const player_indx = player_queue.findIndex(p => p.player_id === player_id);
+        const removed_p = await remove_from_queue(player_id);
         
-        if (player_indx !== -1) {
-            player_queue.splice(player_indx, 1);
-            console.log(`✅ Removed ${player_id} from queue. Queue size: ${player_queue.length}, cancel match making`);
+        if (removed_p) {
+            const q_len = await getQueueLength();
+            console.log(`✅ Removed ${player_id} from queue. Queue size: ${q_len}, cancel match making`);
             
             // confirm cancellation to client by emitting, so it stops the loading
             socket.emit("matchmaking_cancelled");

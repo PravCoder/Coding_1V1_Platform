@@ -8,7 +8,8 @@ import { FaMicrophone, FaVideo, FaCamera, FaSpinner } from "react-icons/fa";
 import Navbar from '../components/Navbar';
 
 // connect to server from client-side establishes socketio connection with backend running on 3001
-const socket = io.connect("http://localhost:3001"); 
+// in production the env var REACT_APP_API_URL is set to the backend.onrender thing
+const socket = io.connect(process.env.REACT_APP_API_URL || "http://localhost:3001");
 
 const HomePage = () => {
   const [user, setUser] = useState(null);

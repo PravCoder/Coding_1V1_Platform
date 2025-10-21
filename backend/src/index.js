@@ -33,10 +33,15 @@ mongoose.connect(process.env.MONGO_URL)
 // create http-server with express by passing in express-app-obj
 const server = http.createServer(app)
 
+const allowed_origins = [
+  "http://localhost:3000",
+  "https://frontendcodeclash.vercel.app"
+];
+
 // create new socket.io server instance pass ing http-server-obj, then configure cors settings
 const io = new Server(server, {
     cors: {
-        origin:"http://localhost:3000", // define where frontend is, in deployment put your domain startup.com
+        origin:allowed_origins, // define where frontend is, in deployment put your domain startup.com
         methods: ["GET", "POST"],
     }
 })
@@ -228,7 +233,7 @@ io.on("connection", (socket) => {
 
               // send post-request to create match once we have selected/connected 2 players & problem
               // pass match-str with it
-              await axios.post("http://localhost:3001/match/create-match", {
+              await axios.post(`${process.env.BACKEND_URL || "http://localhost:3001"}/match/create-match`, {    // backend-url-env-var is not in local .env but defined in render, so locally we test with localhost-url
                   first_player_id: player1.player_id,
                   second_player_id: player2.player_id,
                   problem_id:random_problem,

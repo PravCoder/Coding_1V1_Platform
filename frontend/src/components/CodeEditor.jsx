@@ -12,7 +12,7 @@ import io from "socket.io-client";
 import MatchTimer from "./MatchTimer";
 import MatchProgressGraph from "./MatchProgressGraph";
 
-const socket = io.connect("http://localhost:3001"); 
+// const socket = io.connect("http://localhost:3001"); 
 
 
 const languageOptions = {
@@ -172,7 +172,10 @@ const CodeEditor = ({ match_id }) => {
 
 
     if (!socketRef.current) {
-      socketRef.current = io("http://localhost:3001");
+      socketRef.current = io(process.env.REACT_APP_API_URL, {
+        transports: ["websocket"],
+      });
+
       console.log("creating new socket connection client:", socketRef.current.id);
     }
     socketRef.current.emit("rejoin_match", { match_id }); // if their socket changes rejoin-match

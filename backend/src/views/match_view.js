@@ -294,42 +294,55 @@ router.post("/submission", async (req, res) => {
                 stdin_input = generateStdinInput(cur_testcase, match.problem.parameters, language_id_to_name[languageId]);
             }
             
-            
+            // encode the complete-wrapped-code to base64 before sending to Judge0
+            const encoded_source_code = Buffer.from(completeWrappedCode).toString("base64");
+            const encoded_stdin = Buffer.from(stdin_input).toString("base64");
 
-            // send request to judge0 with given wrapped code and testcase input
-            const response = await axios.post(JUDGE0_API_URL, {source_code: completeWrappedCode, stdin: stdin_input, language_id:languageId}, {headers: JUDGE0_HEADERS});
+            // send request to judge0 with given encoded-wrapped-code and testcase input also encoded
+            const response = await axios.post(JUDGE0_API_URL, {source_code: encoded_source_code, stdin: encoded_stdin, language_id:languageId}, {headers: JUDGE0_HEADERS});
             console.log("API Response:", JSON.stringify(response.data, null, 2));
+            
+            // decode the response
+            const decoded_response = {
+                ...response.data,
+                stdout: response.data.stdout ? Buffer.from(response.data.stdout, 'base64').toString('utf-8') : null,
+                stderr: response.data.stderr ? Buffer.from(response.data.stderr, 'base64').toString('utf-8') : null,
+                compile_output: response.data.compile_output ? Buffer.from(response.data.compile_output, 'base64').toString('utf-8') : null,
+                message: response.data.message ? Buffer.from(response.data.message, 'base64').toString('utf-8') : null
+            }
+
+            console.log("API Response (decoded): ", JSON.stringify(decoded_response, null, 2));
 
             // for every testcase set these variables for reuslt of submission tracking based on the submission-response-obj, updating output-information for every testcase
-            output_information.status = response.data.status.id;
-            output_information.stdout = response.data.stdout;
-            output_information.stderr = response.data.stderr;
-            output_information.message = response.data.message;
-            output_information.time = response.data.time;
-            output_information.memory = response.data.memory;
-            output_information.compile_output = response.data.compile_output;
+            output_information.status = decoded_response.status.id;
+            output_information.stdout = decoded_response.stdout;
+            output_information.stderr = decoded_response.stderr;
+            output_information.message = decoded_response.message;
+            output_information.time = decoded_response.time;
+            output_information.memory = decoded_response.memory;
+            output_information.compile_output = decoded_response.compile_output;
 
 
             // HANDLE RUNTIME/COMPILATION ERRORS
-            if (output_information.status != 3) {   // runtime error when submitting code, 3=accepted, so no 3
-                console.log("RUNTIME ERROR");
-                let output_error_info = formatSubmissionJudge0Error(response.data);   // a string with all of the info when there is a error
+            if (output_information.status != 3) {   // runtime/compilation error when submitting code, 3=accepted, so no 3
+                console.log("RUNTIME/COMPILATION ERROR");
+                let output_error_info = formatSubmissionJudge0Error(decoded_response);   // a string with all of the info when there is a error
                 // console.log("output_error_info ", output_error_info);
 
                 // get the testcase failure information
                 output_information.first_failed_tc_inp = cur_testcase.input; 
                 output_information.first_failed_tc_output = cur_testcase.output;
-                output_information.first_failed_tc_user_output = response.data.stdout;
-                submission_result = "runtime_error";  // set correct message, not passed or failed
+                output_information.first_failed_tc_user_output = decoded_response.stdout;
+                submission_result = "runtime_or_compilation_error";  // set correct message, not passed or failed
 
 
                 //  compute the cur users my variables without sockets whenever they hit submit it updates their my variables, without the need to wait for socket emit event when the other person hits submit
                 if (userID == match.first_player) {  // if first player submitted and there was a runtime error still update their submissions
-                    console.log("🔥 RUNTIME ERROR - Updating first-player stats:", userID);
+                    console.log("🔥 RUNTIME/COMPILATION ERROR - Updating first-player stats:", userID);
                     match.first_player_submissions++;
                     match.first_player_latest_testcases_passed = 0;  // 0 for runtime error
                 } else if (userID == match.second_player) {  // if second player submitted and there was a runtime error still update their submissions
-                    console.log("🔥 RUNTIME ERROR - Updating second-player stats:", userID);
+                    console.log("🔥 RUNTIME ERROR/COMPILATION - Updating second-player stats:", userID);
                     match.second_player_submissions++;
                     match.second_player_latest_testcases_passed = 0;  // 0 for runtime error
                 }
@@ -358,16 +371,16 @@ router.post("/submission", async (req, res) => {
             }
 
             // TESTCASE OUTPUT COMPARISON WITH USER CODE OUTPUT  
-            if (response.data.stdout) {
+            if (decoded_response.stdout) {
                 let userOutput;
                 
                 // we need to parse the raw output returned by the API so we can compare
                 if (language_name === "python") {
                     // Python outputs JSON, so parse it
-                    userOutput = JSON.parse(response.data.stdout.trim());
+                    userOutput = JSON.parse(decoded_response.stdout.trim());
                 } else {
                     // for c++ output raw strings.
-                    userOutput = parseRawOutput(response.data.stdout.trim(), match.problem.return_type);
+                    userOutput = parseRawOutput(decoded_response.stdout.trim(), match.problem.return_type);
                 }
                 
                 const expectedOutput = cur_testcase.output;
@@ -635,7 +648,7 @@ router.post("/mark-player-done-explanation-match/:match_id", async (req, res) =>
 
 // ***HELPER FUNCTIONS***
 
-const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=false&wait=true';
+const JUDGE0_API_URL = 'https://judge0-ce.p.rapidapi.com/submissions?base64_encoded=true&wait=true';  // make sure base64 is true for c++
 const JUDGE0_HEADERS = {
   'Content-Type': 'application/json',
   'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,

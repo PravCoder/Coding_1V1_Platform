@@ -828,6 +828,14 @@ const CodeEditor = ({ match_id }) => {
                       </div>
                     )}
 
+                    {/* Compilation Error Display */}
+                    {outputInfo.status === 6 && (
+                      <div className="bg-red-100 text-red-700 p-3 rounded">
+                        <b><h4>Compilation Error LIL BRO</h4></b>
+                        <b><h4>COMPILE OUTPUT: {outputInfo.compile_output}</h4></b>
+                      </div>
+                    )}
+
                     {/* Success No-Error Display */}
                     {outputInfo.status === 3 && (
                       <div className="bg-green-100 text-green-800 p-3 rounded">

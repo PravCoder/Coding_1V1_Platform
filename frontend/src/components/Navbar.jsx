@@ -42,6 +42,8 @@ const Navbar = () => {
               📊 Stats
             </button>
 
+            
+
             {/* GitHub Link */}
             <a
               href="https://github.com/PravCoder/Coding_1V1_Platform"
@@ -66,6 +68,18 @@ const Navbar = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
               </svg>
             </a>
+
+            {/* Login Link */}
+            <button
+              onClick={() => navigate("/login")}
+              className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-all duration-200 ${
+                isActive('/stats')
+                  ? 'text-white bg-red-700 shadow-lg'
+                  : 'text-gray-300 hover:text-white hover:bg-gray-800'
+              }`}
+            >
+              Login
+            </button>
             
           </div>
         </div>

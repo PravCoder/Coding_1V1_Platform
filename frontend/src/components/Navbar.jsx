@@ -1,12 +1,50 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import getCurrentUser from "../hooks/getCurrentUser";
+import api from "../api/axios";
+
 
 const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(true);
+
   const isActive = (path) => {
     return location.pathname === path;
   };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+        try {
+            const userID = getCurrentUser();
+            
+            if (!userID) {
+                console.log("No user logged in");
+                setLoading(false);
+                return;
+            }
+
+            // call route
+            const response = await api.post(`/get-user-data/${userID}`);
+            
+            console.log("User data fetched:", response.data);
+            
+            // set the username
+            setUsername(response.data.user.username);
+            setEmail(response.data.user.email);
+            
+        } catch (error) {
+            console.error("Error fetching user data:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+  fetchUserData();
+  }, []); 
 
   return (
     <nav className="relative bg-black border-b border-gray-900 shadow-2xl overflow-hidden">
@@ -28,6 +66,7 @@ const Navbar = () => {
           </div>
 
           {/* Navigation Links */}
+          
           <div className="flex items-center space-x-6">
             
             {/* Stats Link */}
@@ -82,7 +121,13 @@ const Navbar = () => {
             </button>
             
           </div>
+          {!loading && username && (
+            <p className="text-white text-sm bg-gray-800 px-3 py-1 rounded-full">
+              Welcome, {username}!
+            </p>
+          )}
         </div>
+        
       </div>
     </nav>
   );

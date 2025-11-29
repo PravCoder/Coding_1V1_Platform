@@ -147,11 +147,11 @@ const HomePage = () => {
     <div className="flex flex-col min-h-screen bg-black">
        <Navbar />
       {/* User ID display in top right */}
-      <div className="absolute top-4 right-4">
+      {/* <div className="absolute top-4 right-4">
         <p className="text-white text-sm bg-gray-800 px-3 py-1 rounded-full">
           User ID: {userID}
         </p>
-      </div>
+      </div> */}
 
       {/* Main content */}
       <div className="flex justify-center items-center flex-1">

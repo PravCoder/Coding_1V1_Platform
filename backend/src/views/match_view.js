@@ -643,6 +643,184 @@ router.post("/mark-player-done-explanation-match/:match_id", async (req, res) =>
     }
 });
 
+/* 
+When user clicks create invite for match in homepage it calls this route.
+Creates a new match object first, selects random problem, creates a link to join this match.
+*/
+router.post("/create-match-invite-link", async (req, res) => {
+    try {
+        const { userID, is_explanation_match} = req.body;
+        console.log("\ncreate match invite is_explanation_match: ", is_explanation_match);
+        match_type = is_explanation_match ? "explanation" : "regular";
+
+        // validate that the user exists
+        const user = await UserModel.findById(userID);
+        if (!user) {
+            console.log("user not found");
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        // generate unique invite token
+        const invite_token = generate_invite_token();
+        console.log("unique invite_token: ", invite_token);
+
+        // get random problem for this match
+        const problem_docs = await ProblemModel.aggregate([{ $sample: { size: 1 } }]); // await for this before going to next line
+        const random_problem_id = problem_docs[0];
+
+        // create a pending match
+        const new_match = new MatchModel({
+            first_player: userID,              // the first player is the person that clicked create-invite-link
+            second_player: null,              // the friend of user hasnt clicked this link yet to join the match
+            problem: random_problem_id,       // set the random problem of this amtch
+            started: false,
+            invite_link_status: "pending",            // that status of this invite link is pending because a player hasnt joined the match yet
+            invite_link_token: invite_token,         // set the invite-token string itself
+            created_by: userID,
+            type: match_type                    // explanation or regular
+        });
+
+        await new_match.save();
+
+        console.log("new-match-id: ", new_match._id);
+
+        // TBD: save first_player.matches(new_match) after they *both* click link
+
+        // get the base-url which is either the localhost if in development or the deployed frontend link, this varable is in frontend/.env
+        const base_url = process.env.FRONTEND_URL || "http://localhost:3000";
+        const invite_link = `${base_url}/join-match/${invite_token}`;
+
+        console.log("unique invite_token created succesfully: ", invite_token);
+        console.log("invite-link: ", invite_link);
+        res.status(201).json({
+            message: "Invite link created successfully",
+            invite_token: invite_token,
+            invite_link: invite_link,
+            matchID: new_match._id
+        });
+
+    } catch (error) {
+        console.error("Error creating invite:", error);
+        res.status(500).json({ message: "Unable to create invite link", error: error.message });
+    }
+});
+
+/* 
+For displaying on join match page, gets the match associated with given invite token
+*/
+router.get("/get-match-invite/:invite_token", async (req, res) => {
+    try {
+
+        const { invite_token } = req.params;
+
+        // query all matches for the match with given invite-token
+        const match = await MatchModel.findOne({ invite_link_token: invite_token })
+            .populate("first_player", "username")
+            .populate("problem", "title difficulty");
+        
+        // some edge cases, if no match with that invite token is found
+        if (!match) {
+            return res.status(404).json({ message: "Invalid invite link" });
+        }
+        // if match with this invite token has already started
+        if (match.invite_link_status === "active") {
+            return res.status(400).json({ message: "Match already started" });
+        }
+        // if match with this invite token has been completed
+        if (match.invite_link_status === "completed") {
+            return res.status(400).json({ message: "Match already completed" });
+        }
+
+        console.log("get match invite for: ", invite_token);
+        // return a response with some match information only what we need. 
+        res.status(200).json({
+            message: "Match found",
+            match: {
+                _id: match._id,
+                first_player: match.first_player,
+                problem: match.problem,
+                type: match.type,
+                invite_link_status: match.invite_link_status
+            }
+        });
+
+    } catch (error) {
+        console.error("Error fetching invite:", error);
+        res.status(500).json({ message: "Error fetching match", error: error.message });
+    }
+
+});
+
+/* 
+When second player click join button on join match page we call this route. 
+*/
+router.post("/join-second-player/:invite_token", async (req, res) => {
+    try {
+
+        const { invite_token } = req.params;
+        const { userID } = req.body;
+
+        // query for match with given invite-token
+        const match = await MatchModel.findOne({ invite_link_token: invite_token })
+                .populate("first_player")
+                .populate("problem");
+
+        // some edge cases, if no match with that invite-token
+        if (!match) {
+            return res.status(404).json({ message: "Invalid invite link" });
+        }
+
+        // if the player cannot join the match yet meaning there are not two players ready
+        if (match.invite_link_status !== "pending") {
+            return res.status(400).json({ message: "Match is not available to join" });
+        }
+
+        // prevent user fomr joining their own match twice, first player and second playe cannot be the same.
+        if (match.first_player._id.toString() === userID) {
+            return res.status(400).json({ message: "You cannot join your own match" });
+        }
+
+        // if the match already has a both player then it is full and this link is invalid
+        if (match.second_player && match.first_player) {
+            return res.status(400).json({ message: "Match already full" });
+        }
+
+        // get the second-user the person that clicked join button on join match page, that sent this request
+        const second_user = await UserModel.findById(userID);
+        if (!second_user) {
+            return res.status(404).json({ message: "second user not found" });
+        }
+
+        const first_user = await UserModel.findById(match.first_player._id);
+        if (!first_user) {
+            return res.status(404).json({ message: "first user not found" });
+        }
+
+        // set the matches second-player for the second user who clicked join in join match page
+        match.second_player = userID;
+        match.invite_link_status = "active";    // both players joined match has started. 
+        await match.save();
+
+        // make sure match is added to both first and second players .matches
+        first_user.matches.push(match._id);
+        second_user.matches.push(match._id);
+        await first_user.save();
+        await second_user.save();
+
+        console.log("\n✅ second player joined match:", match._id);
+
+        res.status(200).json({
+            message: "Successfully joined match",
+            matchId: match._id,
+            match: match
+        });
+    
+    } catch (error) {
+        console.error("Error joining match:", error);
+        res.status(500).json({ message: "Error joining match", error: error.message });
+    }
+
+});
 
 
 
@@ -654,6 +832,11 @@ const JUDGE0_HEADERS = {
   'X-RapidAPI-Key': process.env.X_RAPID_API_KEY,
   'X-RapidAPI-Host': 'judge0-ce.p.rapidapi.com',
 };
+
+// for getting token for invite link to play with friend
+function generate_invite_token() {
+    return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+}
 
 // given the current users id and an match-obj, sets the winner of that match to be
 function setWinner(userID, match) {

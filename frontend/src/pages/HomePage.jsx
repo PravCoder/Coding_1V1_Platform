@@ -6,6 +6,8 @@ import getCurrentUser from "../hooks/getCurrentUser";
 import io from "socket.io-client";
 import { FaMicrophone, FaVideo, FaCamera, FaSpinner } from "react-icons/fa";
 import Navbar from '../components/Navbar';
+import InviteLinkButton from "../components/InviteLinkButton";
+
 
 // connect to server from client-side establishes socketio connection with backend running on 3001
 // in production the env var REACT_APP_API_URL is set to the backend.onrender thing
@@ -14,7 +16,7 @@ const socket = io.connect(process.env.REACT_APP_API_URL || "http://localhost:300
 const HomePage = () => {
   const [user, setUser] = useState(null);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isSpeechToText, setIsSpeechToText] = useState(false); // is this a explanation match
+  const [isSpeechToText, setIsSpeechToText] = useState(false); // is this a explanation match, the match type variable
   const [isVideoEnabled, setIsVideoEnabled] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [cameraPermissionGranted, setCameraPermissionGranted] = useState(false);
@@ -228,7 +230,7 @@ const HomePage = () => {
               onClick={handleFindMatch}
               className="bg-red-700 text-white font-bold py-2 px-4 rounded-md transition flex items-center justify-center space-x-2 hover:bg-red-600"
             >
-              Play! (find match)
+              Play! (find random opponent)
             </button>
           ) : (
             <div className="flex flex-col space-y-3">
@@ -247,8 +249,14 @@ const HomePage = () => {
               </button>
             </div>
           )}
+          <InviteLinkButton 
+            userID={userID} 
+            is_explanation_match={isSpeechToText}
+        />
           
         </div>
+
+        
         
       </div>
       

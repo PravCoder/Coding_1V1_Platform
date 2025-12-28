@@ -28,6 +28,8 @@ const StatsPage = () => {
       
       const matchesData = response.data.matches;
       const stats = response.data.stats;
+
+      console.log("matchesData: ", matchesData);
       
       // Process matches to add result and player info for display
       const processedMatches = matchesData.map(match => {

@@ -6,6 +6,8 @@ import LoginPage from './pages/LoginPage';
 import MatchPage from './pages/MatchPage';
 import MatchOutcomePage from './pages/MatchOutcomePage';
 import StatsPage from './pages/StatsPage';
+import MatchWaitingPage from './pages/MatchWaitingPage';
+
 
 
 
@@ -29,6 +31,8 @@ function App() {
 
 
           <Route path="/stats" element={<StatsPage></StatsPage>} />
+
+          <Route path="/join-match/:invite_token" element={<MatchWaitingPage></MatchWaitingPage>} />
           
 
         </Routes>

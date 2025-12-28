@@ -4,21 +4,24 @@ const MatchSchema = new mongoose.Schema({
     first_player: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users",
-        required: true
+        required: false
     },
     second_player: {
         type: mongoose.Schema.Types.ObjectId,
         ref: "users",
-        required: true
+        required: false
     },
     winner: { 
         type: mongoose.Schema.Types.ObjectId, 
         ref: "users", 
     },
-    problem: {   // storse problem-obj selected for this match
+    problem: {   // stores problem-obj selected for this match
         type: mongoose.Schema.Types.ObjectId, 
         ref: "Problem", 
     },
+
+    invite_link_token: { type: String, unique: true, sparse: true },    // unique invite link token for invite link to join this match
+    invite_link_status: { type: String, default: "pending" },          // the status of this match invite link, "pending" two players havent joined the match yet, "active" both players joined/connected to match, "completed" match is done link is invalid
 
 
     // number of submission each player currently has

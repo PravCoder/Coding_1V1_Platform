@@ -600,6 +600,93 @@ io.on("connection", (socket) => {
     });
 
 
+    socket.on("join_invite_lobby", async ({invite_token, userID}) => {
+      console.log(`\n👋Player ${userID} entered join match lobby: ${invite_token}`);
+      try {
+        // get the match associated with this invite token, the match of this join match page
+        const match = await MatchModel.findOne({ invite_link_token: invite_token });
+        
+        if (!match) {
+            socket.emit("invite_error", { message: "Invalid invite link" });
+            return;
+        }
+
+        // adds current user socket to a room called invite-token 
+        socket.join(invite_token);
+
+        const is_first_player = match.first_player._id.toString() === userID;
+        const is_second_player = match.second_player?._id.toString() === userID;
+
+        // gets all sockets in the room invite-token, returns set of ids every socket.id of every user currently in that room, returns undefined if no one has joined that room
+        const room = io.sockets.adapter.rooms.get(invite_token);
+        // count the number of sockets in that room, its size
+        const num_players_in_room = room ? room.size : 0;
+
+        console.log(`Num players in lobby ${invite_token}: ${num_players_in_room}`);
+
+        // send emit notify all players in join match page lobby about player count all sockets in invite-token room
+        io.to(invite_token).emit("lobby_status",  {
+          num_players_in_room: num_players_in_room,
+          is_match_ready: num_players_in_room === 2   // bool match is ready if number of players in room in 2
+        }); 
+
+        // if both players are in the room, start countdown to match
+        if (num_players_in_room === 2 && match.second_player) {
+            console.log("🎮 Both players present, starting countdown!");
+            
+            // update match status
+            match.invite_link_status = "active";
+            match.started = true;
+            match.match_str = `match_${match.first_player._id}_${match.second_player._id}`; // set room ID for actual match, 
+            await match.save();
+
+            // start 5 second countdown
+            let countdown = 5;
+            const countdownInterval = setInterval(() => {
+                // emit to all sockets in invite-token-room the match-countdown event give it the current count which it updates in the UI
+                io.to(invite_token).emit("match_countdown", { 
+                    count: countdown,
+                    match_id: match._id 
+                });
+                
+                countdown--;
+                
+                if (countdown < 0) {
+                    clearInterval(countdownInterval);
+                    // tell clients to redirect to match page when countdown is over
+                    io.to(invite_token).emit("redirect_to_match", { 
+                        matchID: match._id 
+                    });
+                }
+            }, 1000);
+        }
+        
+
+      } catch (error) {
+        console.error("Error in join_invite_lobby:", error);
+        socket.emit("invite_error", { message: "Error joining lobby" });
+      }
+
+    });
+
+    socket.on("leave_invite_lobby", ({ invite_token }) => {
+      // remove current socket from invite-token-room
+      socket.leave(invite_token);
+
+      // gets all sockets in room invite-token
+      const room = io.sockets.adapter.rooms.get(invite_token);
+      // get number of players in room
+      const num_players_in_room = room ? room.size : 0;   
+
+      // notify remaining plauers in room by sending emit lobby-status
+      io.to(invite_token).emit("lobby_status", {
+        num_players_in_room: num_players_in_room,
+        is_match_ready: false
+      })
+
+    });
+
+
 
     // To rejoin socket to match-str-room. Handle reconnection when a player refreshes or rejoins
     socket.on("rejoin_match", async (data) => {

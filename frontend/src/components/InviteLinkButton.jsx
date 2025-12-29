@@ -11,7 +11,7 @@ function InviteLinkButton({ userID, is_explanation_match = false }) {
     const handleCreateInvite = async () => {
         setLoading(true);
         try {
-            const response = await axios.post("http://localhost:3001/match/create-match-invite-link", {
+            const response = await axios.post(`${process.env.REACT_APP_API_URL}/match/create-match-invite-link`, {
                 userID: userID,
                 is_explanation_match: is_explanation_match      // when they create invite which in turn creates a match they should 
             });
